@@ -1,0 +1,28 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to Prometheus",
+        "description": "Set up a connection to your Prometheus server.",
+        "data": {
+          "prometheus_url": "Prometheus URL",
+          "name": "Name",
+          "username": "Username (Optional)",
+          "password": "Password (Optional)",
+          "verify_ssl": "Verify SSL"
+        },
+        "data_description": {
+          "prometheus_url": "The full URL to your Prometheus instance (e.g. http://192.168.1.100:9090)",
+          "name": "A friendly name for this connection"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect to Prometheus. Please check the URL and credentials.",
+      "unknown": "An unexpected error occurred."
+    },
+    "abort": {
+      "already_configured": "This device is already configured."
+    }
+  }
+}
