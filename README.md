@@ -1,7 +1,7 @@
 # Prometheus Dashboard for Home Assistant
 
 <p align="center">
-  <img src="images/icon.jpg" alt="Prometheus Dashboard" width="150" height="150" style="border-radius: 20px;">
+  <img src="images/icon.png" alt="Prometheus Dashboard" width="160" height="160">
 </p>
 
 <p align="center">
@@ -62,9 +62,16 @@ Used by the cards; `entry_id` is optional — the first configured server is use
 
 ## 🖼️ Brand icon
 
-The icon is shipped in `custom_components/prometheus_dashboard/brand/` (`icon.png`, `logo.png` and `@2x` variants).
-Home Assistant ≥ 2026.3 and HACS pick it up automatically. Older HA versions only show icons from the
-[home-assistant/brands](https://github.com/home-assistant/brands) repository.
+The icon is shipped in `custom_components/prometheus_dashboard/brand/` (`icon.png` 256×256, `icon@2x.png` 512×512,
+transparent background; HA uses the icon as the logo fallback).
+
+- **Settings → Devices & services** (HA ≥ 2026.3): served locally by the built-in `brands` proxy — shown right after
+  installing and restarting HA.
+- **HACS store list**: the current HACS frontend still loads icons directly from
+  `https://brands.home-assistant.io/_/prometheus_dashboard/icon.png`, which returns the *"icon not available"*
+  placeholder until the domain is added to [home-assistant/brands](https://github.com/home-assistant/brands)
+  (`custom_integrations/prometheus_dashboard/icon.png` + `icon@2x.png`). The HACS validation check `brands`
+  already passes thanks to the local `brand/` folder.
 
 ## 🏗️ Architecture
 
