@@ -27,6 +27,22 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 
+# Menu labels are passed as a dict (not translation keys) so the result screen is
+# readable even when the frontend/backend translation cache is stale (e.g. right
+# after an update via HACS before a restart). Language follows the HA language.
+MENU_LABELS: dict[str, dict[str, str]] = {
+    "en": {
+        "save": "Save ({summary})",
+        "edit": "Change settings",
+        "summary": "Prometheus {version} · {latency} ms · up {targets}",
+    },
+    "ru": {
+        "save": "Сохранить ({summary})",
+        "edit": "Изменить настройки",
+        "summary": "Prometheus {version} · {latency} мс · up {targets}",
+    },
+}
+
 DATA_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_PROMETHEUS_URL): TextSelector(TextSelectorConfig(type=TextSelectorType.URL)),
@@ -78,6 +94,21 @@ class PrometheusDashboardConfigFlow(ConfigFlow, domain=DOMAIN):
             "targets": targets,
         }
 
+    def _menu(self, step_id: str, save_step: str, edit_step: str) -> ConfigFlowResult:
+        """Show the test result menu with labels in the Home Assistant language."""
+        language = (self.hass.config.language or "en").split("-")[0].lower()
+        labels = MENU_LABELS.get(language, MENU_LABELS["en"])
+        placeholders = self._result_placeholders()
+        summary = labels["summary"].format(**placeholders)
+        return self.async_show_menu(
+            step_id=step_id,
+            menu_options={
+                save_step: labels["save"].format(summary=summary),
+                edit_step: labels["edit"],
+            },
+            description_placeholders=placeholders,
+        )
+
     def _form(self, step_id: str, errors: dict[str, str], placeholders: dict[str, str]) -> ConfigFlowResult:
         return self.async_show_form(
             step_id=step_id,
@@ -102,11 +133,7 @@ class PrometheusDashboardConfigFlow(ConfigFlow, domain=DOMAIN):
 
     async def async_step_test_result(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Show the result of a successful test and offer to save or edit."""
-        return self.async_show_menu(
-            step_id="test_result",
-            menu_options=["save", "user"],
-            description_placeholders=self._result_placeholders(),
-        )
+        return self._menu("test_result", "save", "user")
 
     async def async_step_save(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Create the config entry."""
@@ -128,11 +155,7 @@ class PrometheusDashboardConfigFlow(ConfigFlow, domain=DOMAIN):
 
     async def async_step_reconfigure_result(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Show the test result for reconfigure."""
-        return self.async_show_menu(
-            step_id="reconfigure_result",
-            menu_options=["reconfigure_save", "reconfigure"],
-            description_placeholders=self._result_placeholders(),
-        )
+        return self._menu("reconfigure_result", "reconfigure_save", "reconfigure")
 
     async def async_step_reconfigure_save(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Save reconfigured settings."""

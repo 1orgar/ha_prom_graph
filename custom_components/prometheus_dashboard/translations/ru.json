@@ -21,11 +21,7 @@
       },
       "test_result": {
         "title": "Подключение успешно",
-        "description": "✅ Подключено к **{url}**\n\n- Версия: **{version}**\n- Время ответа: **{latency} мс**\n- Целей в состоянии up: **{targets}**",
-        "menu_options": {
-          "save": "Сохранить",
-          "user": "Изменить настройки"
-        }
+        "description": "✅ Подключено к **{url}**\n\n- Версия: **{version}**\n- Время ответа: **{latency} мс**\n- Целей в состоянии up: **{targets}**"
       },
       "reconfigure": {
         "title": "Изменение подключения Prometheus",
@@ -47,11 +43,7 @@
       },
       "reconfigure_result": {
         "title": "Подключение успешно",
-        "description": "✅ Подключено к **{url}**\n\n- Версия: **{version}**\n- Время ответа: **{latency} мс**\n- Целей в состоянии up: **{targets}**",
-        "menu_options": {
-          "reconfigure_save": "Сохранить",
-          "reconfigure": "Изменить настройки"
-        }
+        "description": "✅ Подключено к **{url}**\n\n- Версия: **{version}**\n- Время ответа: **{latency} мс**\n- Целей в состоянии up: **{targets}**"
       }
     },
     "error": {

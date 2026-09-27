@@ -21,11 +21,7 @@
       },
       "test_result": {
         "title": "Connection successful",
-        "description": "✅ Connected to **{url}**\n\n- Version: **{version}**\n- Response time: **{latency} ms**\n- Targets up: **{targets}**",
-        "menu_options": {
-          "save": "Save",
-          "user": "Change settings"
-        }
+        "description": "✅ Connected to **{url}**\n\n- Version: **{version}**\n- Response time: **{latency} ms**\n- Targets up: **{targets}**"
       },
       "reconfigure": {
         "title": "Reconfigure Prometheus",
@@ -47,11 +43,7 @@
       },
       "reconfigure_result": {
         "title": "Connection successful",
-        "description": "✅ Connected to **{url}**\n\n- Version: **{version}**\n- Response time: **{latency} ms**\n- Targets up: **{targets}**",
-        "menu_options": {
-          "reconfigure_save": "Save",
-          "reconfigure": "Change settings"
-        }
+        "description": "✅ Connected to **{url}**\n\n- Version: **{version}**\n- Response time: **{latency} ms**\n- Targets up: **{targets}**"
       }
     },
     "error": {
