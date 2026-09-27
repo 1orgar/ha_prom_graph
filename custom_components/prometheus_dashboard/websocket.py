@@ -1,87 +1,95 @@
-import logging
-from typing import Any
-from urllib.parse import urlencode
+"""Websocket API used by the dashboard cards."""
 
-import aiohttp
+from __future__ import annotations
+
+import logging
+from collections.abc import Awaitable, Callable
+from functools import wraps
+from typing import Any
+from urllib.parse import quote
+
 import voluptuous as vol
 from homeassistant.components import websocket_api
+from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-from .const import CONF_PASSWORD, CONF_PROMETHEUS_URL, CONF_USERNAME, CONF_VERIFY_SSL, DOMAIN
+from .api import PrometheusClient, PrometheusError
+from .const import CONF_NAME, CONF_PROMETHEUS_URL, DEFAULT_NAME, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
+ENTRY_ID = vol.Optional("entry_id")
 
-async def _proxy_prometheus(
-    hass: HomeAssistant, entry_id: str, path: str, params: dict[str, Any] | None = None
-) -> dict[str, Any]:
-    """Proxy request to Prometheus."""
-    if entry_id not in hass.data.get(DOMAIN, {}):
-        raise ValueError(f"Unknown entry_id: {entry_id}")
+Handler = Callable[[dict[str, Any], PrometheusClient], Awaitable[Any]]
 
-    config = hass.data[DOMAIN][entry_id]
-    base_url = config[CONF_PROMETHEUS_URL].rstrip("/")
-    url = f"{base_url}{path}"
-    
-    if params:
-        url = f"{url}?{urlencode(params, doseq=True)}"
 
-    auth = None
-    if config.get(CONF_USERNAME) and config.get(CONF_PASSWORD):
-        auth = aiohttp.BasicAuth(config[CONF_USERNAME], config[CONF_PASSWORD])
+def _get_client(hass: HomeAssistant, entry_id: str | None) -> PrometheusClient:
+    """Return the client for `entry_id`, or the first loaded entry if not given."""
+    entries = [e for e in hass.config_entries.async_entries(DOMAIN) if e.state is ConfigEntryState.LOADED]
+    if entry_id:
+        for entry in entries:
+            if entry.entry_id == entry_id:
+                return entry.runtime_data
+        raise LookupError(f"Prometheus server {entry_id} is not configured or not loaded")
+    if not entries:
+        raise LookupError("No Prometheus server configured. Add the Prometheus Dashboard integration first")
+    return entries[0].runtime_data
 
-    session = async_get_clientsession(hass)
-    try:
-        async with session.get(
-            url, auth=auth, ssl=config.get(CONF_VERIFY_SSL, True), timeout=15
-        ) as response:
-            response.raise_for_status()
-            return await response.json()
-    except aiohttp.ClientError as err:
-        _LOGGER.error("Error communicating with Prometheus at %s: %s", url, err)
-        raise
+
+def _proxy(handler: Handler):
+    """Resolve the client, run the handler and translate errors to websocket errors."""
+
+    @wraps(handler)
+    async def wrapper(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+        try:
+            client = _get_client(hass, msg.get("entry_id") or None)
+        except LookupError as err:
+            connection.send_error(msg["id"], "not_found", str(err))
+            return
+        try:
+            result = await handler(msg, client)
+        except PrometheusError as err:
+            connection.send_error(msg["id"], err.reason, str(err))
+            return
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.exception("Unexpected error in %s", msg["type"])
+            connection.send_error(msg["id"], "unknown_error", str(err))
+            return
+        connection.send_result(msg["id"], result)
+
+    return wrapper
 
 
 @callback
 def async_register_websocket_commands(hass: HomeAssistant) -> None:
     """Register websocket commands."""
-    websocket_api.async_register_command(hass, ws_query)
-    websocket_api.async_register_command(hass, ws_query_range)
-    websocket_api.async_register_command(hass, ws_labels)
-    websocket_api.async_register_command(hass, ws_label_values)
-    websocket_api.async_register_command(hass, ws_series)
-    websocket_api.async_register_command(hass, ws_metadata)
-    websocket_api.async_register_command(hass, ws_entries)
+    for command in (ws_query, ws_query_range, ws_labels, ws_label_values, ws_series, ws_metadata, ws_entries):
+        websocket_api.async_register_command(hass, command)
+
 
 
 @websocket_api.websocket_command(
     {
         vol.Required("type"): "prometheus_dashboard/query",
-        vol.Required("entry_id"): str,
+        ENTRY_ID: str,
         vol.Required("query"): str,
         vol.Optional("time"): vol.Coerce(str),
     }
 )
 @websocket_api.async_response
-async def ws_query(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
-    """Handle prometheus_dashboard/query websocket command."""
-    entry_id = msg["entry_id"]
+@_proxy
+async def ws_query(msg: dict[str, Any], client: PrometheusClient) -> dict[str, Any]:
+    """Instant query."""
     params = {"query": msg["query"]}
     if "time" in msg:
         params["time"] = msg["time"]
-
-    try:
-        result = await _proxy_prometheus(hass, entry_id, "/api/v1/query", params)
-        connection.send_result(msg["id"], result)
-    except Exception as err:
-        connection.send_error(msg["id"], "unknown_error", str(err))
+    return await client.request("/api/v1/query", params)
 
 
 @websocket_api.websocket_command(
     {
         vol.Required("type"): "prometheus_dashboard/query_range",
-        vol.Required("entry_id"): str,
+        ENTRY_ID: str,
         vol.Required("query"): str,
         vol.Required("start"): vol.Coerce(str),
         vol.Required("end"): vol.Coerce(str),
@@ -89,121 +97,78 @@ async def ws_query(hass: HomeAssistant, connection: websocket_api.ActiveConnecti
     }
 )
 @websocket_api.async_response
-async def ws_query_range(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
-    """Handle prometheus_dashboard/query_range websocket command."""
-    entry_id = msg["entry_id"]
-    params = {
-        "query": msg["query"],
-        "start": msg["start"],
-        "end": msg["end"],
-        "step": msg["step"],
-    }
-
-    try:
-        result = await _proxy_prometheus(hass, entry_id, "/api/v1/query_range", params)
-        connection.send_result(msg["id"], result)
-    except Exception as err:
-        connection.send_error(msg["id"], "unknown_error", str(err))
+@_proxy
+async def ws_query_range(msg: dict[str, Any], client: PrometheusClient) -> dict[str, Any]:
+    """Range query."""
+    params = {key: msg[key] for key in ("query", "start", "end", "step")}
+    return await client.request("/api/v1/query_range", params)
 
 
-@websocket_api.websocket_command(
-    {
-        vol.Required("type"): "prometheus_dashboard/labels",
-        vol.Required("entry_id"): str,
-    }
-)
+@websocket_api.websocket_command({vol.Required("type"): "prometheus_dashboard/labels", ENTRY_ID: str})
 @websocket_api.async_response
-async def ws_labels(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
-    """Handle prometheus_dashboard/labels websocket command."""
-    entry_id = msg["entry_id"]
-    try:
-        result = await _proxy_prometheus(hass, entry_id, "/api/v1/labels")
-        connection.send_result(msg["id"], result)
-    except Exception as err:
-        connection.send_error(msg["id"], "unknown_error", str(err))
+@_proxy
+async def ws_labels(msg: dict[str, Any], client: PrometheusClient) -> dict[str, Any]:
+    """List label names."""
+    return await client.request("/api/v1/labels")
 
 
 @websocket_api.websocket_command(
     {
         vol.Required("type"): "prometheus_dashboard/label_values",
-        vol.Required("entry_id"): str,
+        ENTRY_ID: str,
         vol.Required("label"): str,
     }
 )
 @websocket_api.async_response
-async def ws_label_values(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
-    """Handle prometheus_dashboard/label_values websocket command."""
-    entry_id = msg["entry_id"]
-    label = msg["label"]
-    try:
-        result = await _proxy_prometheus(hass, entry_id, f"/api/v1/label/{label}/values")
-        connection.send_result(msg["id"], result)
-    except Exception as err:
-        connection.send_error(msg["id"], "unknown_error", str(err))
+@_proxy
+async def ws_label_values(msg: dict[str, Any], client: PrometheusClient) -> dict[str, Any]:
+    """List values of a label."""
+    return await client.request(f"/api/v1/label/{quote(msg['label'], safe='')}/values")
 
 
 @websocket_api.websocket_command(
     {
         vol.Required("type"): "prometheus_dashboard/series",
-        vol.Required("entry_id"): str,
+        ENTRY_ID: str,
         vol.Optional("match"): [str],
     }
 )
 @websocket_api.async_response
-async def ws_series(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
-    """Handle prometheus_dashboard/series websocket command."""
-    entry_id = msg["entry_id"]
-    params = {}
-    if "match" in msg:
-        params["match[]"] = msg["match"]
-
-    try:
-        result = await _proxy_prometheus(hass, entry_id, "/api/v1/series", params)
-        connection.send_result(msg["id"], result)
-    except Exception as err:
-        connection.send_error(msg["id"], "unknown_error", str(err))
+@_proxy
+async def ws_series(msg: dict[str, Any], client: PrometheusClient) -> dict[str, Any]:
+    """Find series by matchers."""
+    params = {"match[]": msg["match"]} if msg.get("match") else None
+    return await client.request("/api/v1/series", params)
 
 
 @websocket_api.websocket_command(
     {
         vol.Required("type"): "prometheus_dashboard/metadata",
-        vol.Required("entry_id"): str,
+        ENTRY_ID: str,
         vol.Optional("metric"): str,
     }
 )
 @websocket_api.async_response
-async def ws_metadata(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
-    """Handle prometheus_dashboard/metadata websocket command."""
-    entry_id = msg["entry_id"]
-    params = {}
-    if "metric" in msg:
-        params["metric"] = msg["metric"]
-
-    try:
-        result = await _proxy_prometheus(hass, entry_id, "/api/v1/metadata", params)
-        connection.send_result(msg["id"], result)
-    except Exception as err:
-        connection.send_error(msg["id"], "unknown_error", str(err))
+@_proxy
+async def ws_metadata(msg: dict[str, Any], client: PrometheusClient) -> dict[str, Any]:
+    """Metric metadata."""
+    params = {"metric": msg["metric"]} if msg.get("metric") else None
+    return await client.request("/api/v1/metadata", params)
 
 
-@websocket_api.websocket_command(
-    {
-        vol.Required("type"): "prometheus_dashboard/entries",
-    }
-)
-@websocket_api.async_response
-async def ws_entries(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
-    """Handle prometheus_dashboard/entries websocket command."""
-    try:
-        entries = hass.data.get(DOMAIN, {})
-        result = [
+@websocket_api.websocket_command({vol.Required("type"): "prometheus_dashboard/entries"})
+@callback
+def ws_entries(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    """List configured Prometheus servers."""
+    connection.send_result(
+        msg["id"],
+        [
             {
-                "entry_id": entry_id,
-                "name": config.get("name", "Prometheus"),
-                "url": config.get(CONF_PROMETHEUS_URL),
+                "entry_id": entry.entry_id,
+                "name": entry.title or entry.data.get(CONF_NAME, DEFAULT_NAME),
+                "url": entry.data.get(CONF_PROMETHEUS_URL),
+                "loaded": entry.state is ConfigEntryState.LOADED,
             }
-            for entry_id, config in entries.items()
-        ]
-        connection.send_result(msg["id"], result)
-    except Exception as err:
-        connection.send_error(msg["id"], "unknown_error", str(err))
+            for entry in hass.config_entries.async_entries(DOMAIN)
+        ],
+    )

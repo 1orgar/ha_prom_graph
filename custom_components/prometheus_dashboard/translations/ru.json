@@ -1,0 +1,71 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Подключение к Prometheus",
+        "description": "Укажите параметры подключения и нажмите **Проверить подключение**. Перед сохранением вы увидите результат проверки.",
+        "submit": "Проверить подключение",
+        "data": {
+          "prometheus_url": "URL Prometheus",
+          "name": "Название",
+          "username": "Имя пользователя (необязательно)",
+          "password": "Пароль (необязательно)",
+          "verify_ssl": "Проверять SSL-сертификат"
+        },
+        "data_description": {
+          "prometheus_url": "Базовый URL Prometheus или совместимого API (VictoriaMetrics, Thanos, Mimir), например http://192.168.1.100:9090",
+          "name": "Понятное название сервера, отображается в редакторе карточек",
+          "username": "Логин для Basic Auth",
+          "password": "Пароль для Basic Auth"
+        }
+      },
+      "test_result": {
+        "title": "Подключение успешно",
+        "description": "✅ Подключено к **{url}**\n\n- Версия: **{version}**\n- Время ответа: **{latency} мс**\n- Целей в состоянии up: **{targets}**",
+        "menu_options": {
+          "save": "Сохранить",
+          "user": "Изменить настройки"
+        }
+      },
+      "reconfigure": {
+        "title": "Изменение подключения Prometheus",
+        "description": "Измените параметры подключения и нажмите **Проверить подключение**.",
+        "submit": "Проверить подключение",
+        "data": {
+          "prometheus_url": "URL Prometheus",
+          "name": "Название",
+          "username": "Имя пользователя (необязательно)",
+          "password": "Пароль (необязательно)",
+          "verify_ssl": "Проверять SSL-сертификат"
+        },
+        "data_description": {
+          "prometheus_url": "Базовый URL Prometheus или совместимого API (VictoriaMetrics, Thanos, Mimir), например http://192.168.1.100:9090",
+          "name": "Понятное название сервера, отображается в редакторе карточек",
+          "username": "Логин для Basic Auth",
+          "password": "Пароль для Basic Auth"
+        }
+      },
+      "reconfigure_result": {
+        "title": "Подключение успешно",
+        "description": "✅ Подключено к **{url}**\n\n- Версия: **{version}**\n- Время ответа: **{latency} мс**\n- Целей в состоянии up: **{targets}**",
+        "menu_options": {
+          "reconfigure_save": "Сохранить",
+          "reconfigure": "Изменить настройки"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Не удалось подключиться к серверу: {error_detail}",
+      "invalid_auth": "Ошибка авторизации ({error_detail}). Проверьте логин и пароль.",
+      "timeout": "Сервер не ответил вовремя ({error_detail}).",
+      "ssl_error": "Ошибка SSL: {error_detail}. Для самоподписанных сертификатов отключите «Проверять SSL-сертификат».",
+      "not_prometheus": "URL не похож на API Prometheus ({error_detail}). Укажите базовый URL без /graph и /api.",
+      "query_error": "Prometheus вернул ошибку: {error_detail}",
+      "unknown": "Непредвиденная ошибка, подробности в журнале Home Assistant."
+    },
+    "abort": {
+      "already_configured": "Этот сервер Prometheus уже добавлен.",
+      "reconfigure_successful": "Настройки обновлены."
+    }
+  }
+}
