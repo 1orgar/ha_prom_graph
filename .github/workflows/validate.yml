@@ -34,3 +34,32 @@ jobs:
         run: uv pip install --system -r requirements_test.txt
       - name: Run tests
         run: python -m pytest -q
+
+  # Push to main with a new `version` in manifest.json -> tag vX.Y.Z + GitHub release.
+  # Nothing happens if the tag already exists, so ordinary commits don't create releases.
+  release:
+    needs: [hassfest, tests]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency: release
+    steps:
+      - uses: actions/checkout@v4
+      - name: Read version
+        id: version
+        run: |
+          VERSION=$(python3 -c "import json; print(json.load(open('custom_components/prometheus_dashboard/manifest.json'))['version'])")
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+      - name: Create tag and release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" > /dev/null; then
+            echo "Tag $TAG already exists - nothing to release"
+            exit 0
+          fi
+          PRERELEASE=""
+          case "$TAG" in *-*) PRERELEASE="--prerelease" ;; esac
+          gh release create "$TAG" --target "$GITHUB_SHA" --title "$TAG" --generate-notes $PRERELEASE

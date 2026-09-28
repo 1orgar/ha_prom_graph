@@ -1,7 +1,7 @@
 # Prometheus Dashboard for Home Assistant
 
 <p align="center">
-  <img src="images/icon.png" alt="Prometheus Dashboard" width="160" height="160">
+  <img src="https://raw.githubusercontent.com/1orgar/ha_prom_graph/main/images/icon.png" alt="Prometheus Dashboard" width="160" height="160">
 </p>
 
 <p align="center">
@@ -16,6 +16,13 @@ Backend integration that connects Home Assistant to one or more Prometheus serve
 
 > 📊 **Dashboard cards** live in a separate repository:
 > **[ha_prom_graph_cards](https://github.com/1orgar/ha_prom_graph_cards)** (HACS → *Dashboard*).
+
+![Dashboard built with ha_prom_graph_cards](https://raw.githubusercontent.com/1orgar/ha_prom_graph_cards/main/images/grid.png)
+
+| | |
+|:---:|:---:|
+| ![Time series](https://raw.githubusercontent.com/1orgar/ha_prom_graph_cards/main/images/timeseries.png) | ![Stat tiles](https://raw.githubusercontent.com/1orgar/ha_prom_graph_cards/main/images/stat-tiles.png) |
+| ![State timeline](https://raw.githubusercontent.com/1orgar/ha_prom_graph_cards/main/images/state-timeline.png) | ![Alerts](https://raw.githubusercontent.com/1orgar/ha_prom_graph_cards/main/images/alerts.png) |
 
 ## ✨ Features
 
@@ -89,6 +96,10 @@ Used by the cards; `entry_id` is optional — the first configured server is use
 pip install -r requirements_test.txt   # Python 3.14
 pytest -q
 ```
+
+**Releases are automatic:** bump `version` in `custom_components/prometheus_dashboard/manifest.json`,
+commit and push to `main`. After hassfest and tests pass, CI creates the tag `vX.Y.Z` and a GitHub release
+(versions like `1.0.0-beta.1` become pre-releases). If the tag already exists nothing happens.
 
 ## 🖼️ Brand icon
 
