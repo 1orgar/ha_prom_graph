@@ -59,5 +59,101 @@
       "already_configured": "This Prometheus server is already configured.",
       "reconfigure_successful": "The settings have been updated."
     }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Prometheus Dashboard options",
+        "description": "Polling of PromQL sensors / alerts and the shared query cache.",
+        "data": {
+          "scan_interval": "Polling interval for sensors and alerts",
+          "cache_ttl": "Query cache TTL",
+          "alerts_enabled": "Create an alerts sensor"
+        },
+        "data_description": {
+          "scan_interval": "How often PromQL sensors and the alerts sensor are updated",
+          "cache_ttl": "Identical queries from cards, tabs and sensors within this time share one request to Prometheus. 0 disables the cache (concurrent requests are still merged)",
+          "alerts_enabled": "Sensor with the number of firing alerts; the alert list is in its attributes"
+        }
+      }
+    }
+  },
+  "config_subentries": {
+    "sensor": {
+      "entry_type": "PromQL sensor",
+      "initiate_flow": {
+        "user": "Add PromQL sensor",
+        "reconfigure": "Edit PromQL sensor"
+      },
+      "step": {
+        "user": {
+          "title": "PromQL sensor",
+          "description": "The query is executed before saving. If it returns several series they are combined with the selected aggregation; all series are available in the attributes.",
+          "data": {
+            "name": "Name",
+            "query": "PromQL query",
+            "aggregate": "Several series",
+            "unit_of_measurement": "Unit of measurement",
+            "device_class": "Device class",
+            "state_class": "State class",
+            "precision": "Display precision"
+          },
+          "data_description": {
+            "query": "Instant query, e.g. node_load1 or sum(rate(http_requests_total[5m]))",
+            "state_class": "Choose \"measurement\" to keep long-term statistics"
+          }
+        },
+        "reconfigure": {
+          "title": "PromQL sensor",
+          "description": "The query is executed before saving.",
+          "data": {
+            "name": "Name",
+            "query": "PromQL query",
+            "aggregate": "Several series",
+            "unit_of_measurement": "Unit of measurement",
+            "device_class": "Device class",
+            "state_class": "State class",
+            "precision": "Display precision"
+          }
+        }
+      },
+      "error": {
+        "query_error": "Prometheus rejected the query: {error_detail}",
+        "empty_result": "The query returned no series. Check the metric name and label filters.",
+        "cannot_connect": "Failed to connect to the server: {error_detail}",
+        "timeout": "The server did not respond in time ({error_detail}).",
+        "invalid_auth": "Authentication failed ({error_detail}).",
+        "ssl_error": "SSL error: {error_detail}",
+        "not_prometheus": "Unexpected response: {error_detail}"
+      },
+      "abort": {
+        "reconfigure_successful": "The sensor has been updated."
+      }
+    }
+  },
+  "selector": {
+    "aggregate": {
+      "options": {
+        "first": "First series",
+        "sum": "Sum",
+        "avg": "Average",
+        "min": "Minimum",
+        "max": "Maximum",
+        "count": "Number of series"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "alerts": {
+        "name": "Firing alerts"
+      }
+    }
+  },
+  "issues": {
+    "unreachable": {
+      "title": "Prometheus server {name} is unreachable",
+      "description": "PromQL sensors and alerts of **{name}** cannot be updated: {error}\n\nCheck that the server is running, or change the connection with **Reconfigure** on the integration page. This message disappears automatically when the server answers again."
+    }
   }
 }

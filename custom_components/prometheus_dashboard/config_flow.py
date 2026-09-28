@@ -11,7 +11,14 @@ import logging
 from typing import Any
 
 import voluptuous as vol
-from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
+from homeassistant.config_entries import (
+    ConfigEntry,
+    ConfigFlow,
+    ConfigFlowResult,
+    ConfigSubentryFlow,
+    OptionsFlow,
+)
+from homeassistant.core import callback
 from homeassistant.helpers.selector import TextSelector, TextSelectorConfig, TextSelectorType
 
 from .api import ConnectionTestResult, PrometheusClient, PrometheusError, normalize_url
@@ -23,7 +30,10 @@ from .const import (
     CONF_VERIFY_SSL,
     DEFAULT_NAME,
     DOMAIN,
+    SUBENTRY_SENSOR,
 )
+from .options_flow import PrometheusOptionsFlow
+from .sensor_flow import PromQLSensorSubentryFlow
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -58,6 +68,17 @@ class PrometheusDashboardConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Prometheus Dashboard."""
 
     VERSION = 1
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(config_entry: ConfigEntry) -> OptionsFlow:
+        return PrometheusOptionsFlow()
+
+    @classmethod
+    @callback
+    def async_get_supported_subentry_types(cls, config_entry: ConfigEntry) -> dict[str, type[ConfigSubentryFlow]]:
+        """"Add PromQL sensor" button on the integration page."""
+        return {SUBENTRY_SENSOR: PromQLSensorSubentryFlow}
 
     def __init__(self) -> None:
         self._data: dict[str, Any] = {}

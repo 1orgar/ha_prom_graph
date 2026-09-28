@@ -29,11 +29,11 @@ def _get_client(hass: HomeAssistant, entry_id: str | None) -> PrometheusClient:
     if entry_id:
         for entry in entries:
             if entry.entry_id == entry_id:
-                return entry.runtime_data
+                return entry.runtime_data.client
         raise LookupError(f"Prometheus server {entry_id} is not configured or not loaded")
     if not entries:
         raise LookupError("No Prometheus server configured. Add the Prometheus Dashboard integration first")
-    return entries[0].runtime_data
+    return entries[0].runtime_data.client
 
 
 def _proxy(handler: Handler):
@@ -63,9 +63,17 @@ def _proxy(handler: Handler):
 @callback
 def async_register_websocket_commands(hass: HomeAssistant) -> None:
     """Register websocket commands."""
-    for command in (ws_query, ws_query_range, ws_labels, ws_label_values, ws_series, ws_metadata, ws_entries):
+    for command in (
+        ws_query,
+        ws_query_range,
+        ws_labels,
+        ws_label_values,
+        ws_series,
+        ws_metadata,
+        ws_alerts,
+        ws_entries,
+    ):
         websocket_api.async_register_command(hass, command)
-
 
 
 @websocket_api.websocket_command(
@@ -156,6 +164,14 @@ async def ws_metadata(msg: dict[str, Any], client: PrometheusClient) -> dict[str
     return await client.request("/api/v1/metadata", params)
 
 
+@websocket_api.websocket_command({vol.Required("type"): "prometheus_dashboard/alerts", ENTRY_ID: str})
+@websocket_api.async_response
+@_proxy
+async def ws_alerts(msg: dict[str, Any], client: PrometheusClient) -> dict[str, Any]:
+    """Active alerts of the server."""
+    return {"alerts": await client.alerts()}
+
+
 @websocket_api.websocket_command({vol.Required("type"): "prometheus_dashboard/entries"})
 @callback
 def ws_entries(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
@@ -168,6 +184,9 @@ def ws_entries(hass: HomeAssistant, connection: websocket_api.ActiveConnection, 
                 "name": entry.title or entry.data.get(CONF_NAME, DEFAULT_NAME),
                 "url": entry.data.get(CONF_PROMETHEUS_URL),
                 "loaded": entry.state is ConfigEntryState.LOADED,
+                "cache": entry.runtime_data.client.cache.stats()
+                if entry.state is ConfigEntryState.LOADED
+                else None,
             }
             for entry in hass.config_entries.async_entries(DOMAIN)
         ],

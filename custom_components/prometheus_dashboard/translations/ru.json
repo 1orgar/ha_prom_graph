@@ -59,5 +59,101 @@
       "already_configured": "Этот сервер Prometheus уже добавлен.",
       "reconfigure_successful": "Настройки обновлены."
     }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Параметры Prometheus Dashboard",
+        "description": "Опрос PromQL-сенсоров и алертов, общий кэш запросов.",
+        "data": {
+          "scan_interval": "Интервал опроса сенсоров и алертов",
+          "cache_ttl": "Время жизни кэша запросов",
+          "alerts_enabled": "Создать сенсор алертов"
+        },
+        "data_description": {
+          "scan_interval": "Как часто обновляются PromQL-сенсоры и сенсор алертов",
+          "cache_ttl": "Одинаковые запросы от карточек, вкладок и сенсоров в пределах этого времени выполняются одним запросом к Prometheus. 0 — кэш выключен (одновременные запросы всё равно объединяются)",
+          "alerts_enabled": "Сенсор с числом активных (firing) алертов; список алертов в атрибутах"
+        }
+      }
+    }
+  },
+  "config_subentries": {
+    "sensor": {
+      "entry_type": "PromQL-сенсор",
+      "initiate_flow": {
+        "user": "Добавить PromQL-сенсор",
+        "reconfigure": "Изменить PromQL-сенсор"
+      },
+      "step": {
+        "user": {
+          "title": "PromQL-сенсор",
+          "description": "Перед сохранением запрос выполняется. Если он возвращает несколько серий, они объединяются выбранной агрегацией; все серии доступны в атрибутах.",
+          "data": {
+            "name": "Название",
+            "query": "Запрос PromQL",
+            "aggregate": "Несколько серий",
+            "unit_of_measurement": "Единица измерения",
+            "device_class": "Класс устройства",
+            "state_class": "Класс состояния",
+            "precision": "Знаков после запятой"
+          },
+          "data_description": {
+            "query": "Мгновенный запрос, например node_load1 или sum(rate(http_requests_total[5m]))",
+            "state_class": "Выберите «measurement», чтобы сохранялась долгосрочная статистика"
+          }
+        },
+        "reconfigure": {
+          "title": "PromQL-сенсор",
+          "description": "Перед сохранением запрос выполняется.",
+          "data": {
+            "name": "Название",
+            "query": "Запрос PromQL",
+            "aggregate": "Несколько серий",
+            "unit_of_measurement": "Единица измерения",
+            "device_class": "Класс устройства",
+            "state_class": "Класс состояния",
+            "precision": "Знаков после запятой"
+          }
+        }
+      },
+      "error": {
+        "query_error": "Prometheus отклонил запрос: {error_detail}",
+        "empty_result": "Запрос не вернул ни одной серии. Проверьте имя метрики и фильтры меток.",
+        "cannot_connect": "Не удалось подключиться к серверу: {error_detail}",
+        "timeout": "Сервер не ответил вовремя ({error_detail}).",
+        "invalid_auth": "Ошибка авторизации ({error_detail}).",
+        "ssl_error": "Ошибка SSL: {error_detail}",
+        "not_prometheus": "Неожиданный ответ: {error_detail}"
+      },
+      "abort": {
+        "reconfigure_successful": "Сенсор обновлён."
+      }
+    }
+  },
+  "selector": {
+    "aggregate": {
+      "options": {
+        "first": "Первая серия",
+        "sum": "Сумма",
+        "avg": "Среднее",
+        "min": "Минимум",
+        "max": "Максимум",
+        "count": "Количество серий"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "alerts": {
+        "name": "Активные алерты"
+      }
+    }
+  },
+  "issues": {
+    "unreachable": {
+      "title": "Сервер Prometheus {name} недоступен",
+      "description": "PromQL-сенсоры и алерты сервера **{name}** не обновляются: {error}\n\nПроверьте, что сервер работает, или измените подключение через **Изменить настройки** на странице интеграции. Сообщение исчезнет само, когда сервер снова ответит."
+    }
   }
 }
