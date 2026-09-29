@@ -17,7 +17,7 @@ Backend integration that connects Home Assistant to one or more Prometheus serve
 > 📊 **Dashboard cards** live in a separate repository:
 > **[ha_prom_graph_cards](https://github.com/1orgar/ha_prom_graph_cards)** (HACS → *Dashboard*).
 
-![Dashboard built with ha_prom_graph_cards](https://raw.githubusercontent.com/1orgar/ha_prom_graph_cards/main/images/grid.png)
+![Dashboard built with ha_prom_graph_cards](https://raw.githubusercontent.com/1orgar/ha_prom_graph_cards/main/images/row.png)
 
 | | |
 |:---:|:---:|
@@ -30,6 +30,7 @@ Backend integration that connects Home Assistant to one or more Prometheus serve
 - 🧪 **Test connection** button in the setup dialog — shows version, response time and targets up before saving
 - 🔁 Reconfigure an existing server from the UI (also with connection test)
 - 📈 **PromQL sensors** — any instant query becomes a Home Assistant sensor (automations, history, statistics)
+- 🔔 **PromQL alerts** — alert rules with a firing window (`for`), every series tracked separately, binary sensor + events
 - 🚨 **Alerts sensor** — number of firing alerts, alert list in attributes (+ `prometheus_dashboard/alerts` for the Alerts card)
 - ♻️ **Request de-duplication + cache** — identical queries from all cards, tabs and sensors share one request
 - 🩺 Diagnostics (credentials redacted) and a Repairs issue while a server is unreachable
@@ -64,6 +65,42 @@ The query is executed before saving — invalid PromQL or an empty result is rep
 If the query returns several series choose how to combine them (first / sum / avg / min / max / count);
 all series and their labels are available in the sensor attributes. Unit, device class, state class
 (`measurement` enables long-term statistics) and precision are optional.
+
+### PromQL alerts
+
+A sensor only shows a value. To get an **alert** press **Add PromQL alert** on the integration page
+(it works like a Prometheus alerting rule, evaluated by Home Assistant on every poll):
+
+| Field | Description |
+|-------|-------------|
+| Query | instant query. Either the query selects the problem itself (`up == 0`, `node_filesystem_avail_bytes / node_filesystem_size_bytes < 0.1`) with condition **any series**, or its values are compared with a threshold (`>`, `≥`, `<`, `≤`, `=`, `≠`) |
+| For (firing window) | how long a series must stay active before the alert fires; empty = at once |
+| Severity / Summary | shown in the Alerts card; summary supports `{{ $value }}` and `{{ $labels.instance }}` |
+
+**Every series of the query is an alert instance of its own** (like Prometheus): `inactive → pending → firing`.
+A series that recovers before the window ends starts the window again.
+
+- `binary_sensor.<server>_<alert>` (device class *problem*) is **on** while at least one series is firing;
+  attributes: `state` (inactive / pending / firing), `firing_count`, `pending_count`, `series`, `pending_series`
+  (labels, value, active since, summary). The series lists are not stored in the recorder.
+- On every change an event `prometheus_dashboard_alert` is fired
+  (`alert`, `state: firing | resolved`, `severity`, `labels`, `value`, `summary`) — one per series, handy for notifications:
+
+```yaml
+triggers:
+  - trigger: event
+    event_type: prometheus_dashboard_alert
+    event_data: { state: firing }
+actions:
+  - action: notify.mobile_app_phone
+    data:
+      title: "{{ trigger.event.data.alert }}"
+      message: "{{ trigger.event.data.summary or trigger.event.data.labels }}"
+```
+
+- The Alerts card (`prometheus_dashboard/alerts`) lists these alerts together with the Prometheus rules
+  (`source: home_assistant`, filter *Source* in the card).
+- The state is kept in memory: after a restart of Home Assistant pending windows start again.
 
 ### Options
 

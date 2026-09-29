@@ -30,9 +30,11 @@ from .const import (
     CONF_VERIFY_SSL,
     DEFAULT_NAME,
     DOMAIN,
+    SUBENTRY_ALERT,
     SUBENTRY_SENSOR,
 )
 from .options_flow import PrometheusOptionsFlow
+from .alert_flow import PromQLAlertSubentryFlow
 from .sensor_flow import PromQLSensorSubentryFlow
 
 _LOGGER = logging.getLogger(__name__)
@@ -78,7 +80,7 @@ class PrometheusDashboardConfigFlow(ConfigFlow, domain=DOMAIN):
     @callback
     def async_get_supported_subentry_types(cls, config_entry: ConfigEntry) -> dict[str, type[ConfigSubentryFlow]]:
         """"Add PromQL sensor" button on the integration page."""
-        return {SUBENTRY_SENSOR: PromQLSensorSubentryFlow}
+        return {SUBENTRY_SENSOR: PromQLSensorSubentryFlow, SUBENTRY_ALERT: PromQLAlertSubentryFlow}
 
     def __init__(self) -> None:
         self._data: dict[str, Any] = {}

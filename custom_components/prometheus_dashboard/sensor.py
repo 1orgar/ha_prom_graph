@@ -28,7 +28,12 @@ MAX_SERIES_ATTRIBUTE = 20
 MAX_ALERTS_ATTRIBUTE = 50
 
 
-def device_info(entry: PrometheusConfigEntry, subentry_id: str | None = None, name: str | None = None) -> DeviceInfo:
+def device_info(
+    entry: PrometheusConfigEntry,
+    subentry_id: str | None = None,
+    name: str | None = None,
+    model: str = "PromQL sensor",
+) -> DeviceInfo:
     """Server device for entry-level entities; one device per sensor subentry.
 
     A device belongs to exactly one config subentry in current Home Assistant,
@@ -39,7 +44,7 @@ def device_info(entry: PrometheusConfigEntry, subentry_id: str | None = None, na
         identifiers={(DOMAIN, identifier)},
         name=name or entry.title,
         manufacturer="Prometheus",
-        model="PromQL sensor" if subentry_id else "Prometheus server",
+        model=model if subentry_id else "Prometheus server",
         entry_type=DeviceEntryType.SERVICE,
         configuration_url=entry.runtime_data.client.base_url,
     )

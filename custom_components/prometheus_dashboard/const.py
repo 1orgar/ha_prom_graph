@@ -30,3 +30,18 @@ CONF_PRECISION = "precision"
 CONF_AGGREGATE = "aggregate"
 
 AGGREGATES = ["first", "sum", "avg", "min", "max", "count"]
+
+# Alert subentries (PromQL alert rules evaluated by Home Assistant)
+SUBENTRY_ALERT = "alert"
+CONF_CONDITION = "condition"
+CONF_THRESHOLD = "threshold"
+CONF_FOR = "for"
+CONF_SEVERITY = "severity"
+CONF_SUMMARY = "summary"
+
+CONDITION_ANY = "any"
+CONDITIONS = [CONDITION_ANY, ">", ">=", "<", "<=", "==", "!="]
+SEVERITIES = ["critical", "warning", "info"]
+
+EVENT_ALERT = f"{DOMAIN}_alert"
+MAX_ALERT_SERIES_ATTRIBUTE = 50

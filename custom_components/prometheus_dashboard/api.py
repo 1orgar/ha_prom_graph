@@ -87,6 +87,8 @@ class PrometheusClient:
         if config.get(CONF_USERNAME):
             self._auth = aiohttp.BasicAuth(config[CONF_USERNAME], config.get(CONF_PASSWORD) or "")
         self.cache = RequestCache(cache_ttl)
+        # set by async_setup_entry: PromQL alerts of Home Assistant are added to `/alerts`
+        self.coordinator: Any = None
 
     @property
     def base_url(self) -> str:

@@ -22,7 +22,7 @@ from .repairs import async_update_connection_issue
 from .websocket import async_register_websocket_commands
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
-PLATFORMS: list[Platform] = [Platform.SENSOR]
+PLATFORMS: list[Platform] = [Platform.BINARY_SENSOR, Platform.SENSOR]
 
 
 @dataclass
@@ -47,6 +47,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: PrometheusConfigEntry) -
     ttl = float(entry.options.get(CONF_CACHE_TTL, DEFAULT_CACHE_TTL))
     client = PrometheusClient(hass, entry.data, cache_ttl=ttl)
     coordinator = PrometheusCoordinator(hass, entry, client)
+    client.coordinator = coordinator
     entry.runtime_data = PrometheusRuntimeData(client=client, coordinator=coordinator)
 
     if coordinator.has_work:

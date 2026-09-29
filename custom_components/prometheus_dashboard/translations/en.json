@@ -88,7 +88,7 @@
       "step": {
         "user": {
           "title": "PromQL sensor",
-          "description": "The query is executed before saving. If it returns several series they are combined with the selected aggregation; all series are available in the attributes.",
+          "description": "The query is executed before saving. If it returns several series they are combined with the selected aggregation; all series are available in the attributes. To turn a sensor into an alert, add a **PromQL alert** with the same query.",
           "data": {
             "name": "Name",
             "query": "PromQL query",
@@ -129,6 +129,59 @@
       "abort": {
         "reconfigure_successful": "The sensor has been updated."
       }
+    },
+    "alert": {
+      "entry_type": "PromQL alert",
+      "initiate_flow": {
+        "user": "Add PromQL alert",
+        "reconfigure": "Edit PromQL alert"
+      },
+      "step": {
+        "user": {
+          "title": "PromQL alert",
+          "description": "Works like a Prometheus alerting rule: **every series** of the query is checked separately. A series that meets the condition becomes *pending* and turns *firing* when it stays active for the **For** time. The binary sensor is on while at least one series is firing; firing / resolved changes are sent as `prometheus_dashboard_alert` events.\n\nCurrent result: **{series}** series, **{active}** meet the condition.",
+          "data": {
+            "name": "Name",
+            "query": "PromQL query",
+            "condition": "Condition",
+            "threshold": "Threshold",
+            "for": "For (firing window)",
+            "severity": "Severity",
+            "summary": "Summary"
+          },
+          "data_description": {
+            "query": "Instant query. Either the query itself selects the problem (e.g. up == 0) with condition \"any series\", or its values are compared with a threshold",
+            "condition": "\"Any series\": every series returned by the query is active",
+            "for": "How long a series must stay active before the alert fires. Empty = at once",
+            "summary": "Templates: {{ $value }}, {{ $labels.instance }}"
+          }
+        },
+        "reconfigure": {
+          "title": "PromQL alert",
+          "description": "Current result: **{series}** series, **{active}** meet the condition.",
+          "data": {
+            "name": "Name",
+            "query": "PromQL query",
+            "condition": "Condition",
+            "threshold": "Threshold",
+            "for": "For (firing window)",
+            "severity": "Severity",
+            "summary": "Summary"
+          }
+        }
+      },
+      "error": {
+        "query_error": "Prometheus rejected the query: {error_detail}",
+        "threshold_required": "Set a threshold for this condition",
+        "cannot_connect": "Failed to connect to the server: {error_detail}",
+        "timeout": "The server did not respond in time ({error_detail}).",
+        "invalid_auth": "Authentication failed ({error_detail}).",
+        "ssl_error": "SSL error: {error_detail}",
+        "not_prometheus": "Unexpected response: {error_detail}"
+      },
+      "abort": {
+        "reconfigure_successful": "The alert has been updated."
+      }
     }
   },
   "selector": {
@@ -140,6 +193,24 @@
         "min": "Minimum",
         "max": "Maximum",
         "count": "Number of series"
+      }
+    },
+    "condition": {
+      "options": {
+        "any": "Any series (query is the condition)",
+        ">": "> threshold",
+        ">=": "≥ threshold",
+        "<": "< threshold",
+        "<=": "≤ threshold",
+        "==": "= threshold",
+        "!=": "≠ threshold"
+      }
+    },
+    "severity": {
+      "options": {
+        "critical": "Critical",
+        "warning": "Warning",
+        "info": "Info"
       }
     }
   },

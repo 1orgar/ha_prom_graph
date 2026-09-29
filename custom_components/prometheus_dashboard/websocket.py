@@ -168,8 +168,12 @@ async def ws_metadata(msg: dict[str, Any], client: PrometheusClient) -> dict[str
 @websocket_api.async_response
 @_proxy
 async def ws_alerts(msg: dict[str, Any], client: PrometheusClient) -> dict[str, Any]:
-    """Active alerts of the server."""
-    return {"alerts": await client.alerts()}
+    """Active alerts of the server + PromQL alerts evaluated by Home Assistant."""
+    alerts = await client.alerts()
+    coordinator = getattr(client, "coordinator", None)
+    if coordinator is not None:
+        alerts = [*alerts, *coordinator.local_alerts()]
+    return {"alerts": alerts}
 
 
 @websocket_api.websocket_command({vol.Required("type"): "prometheus_dashboard/entries"})
