@@ -76,9 +76,7 @@ class PrometheusAlertBinarySensor(CoordinatorEntity[PrometheusCoordinator], Bina
         return {
             "state": self.coordinator.alert_tracker.state(self._subentry_id),
             "query": self._query,
-            "condition": self._rule.condition
-            if self._rule.threshold is None
-            else f"{self._rule.condition} {self._rule.threshold:g}",
+            "condition": self._rule.describe_condition(),
             "for": int(self._rule.for_seconds),
             "severity": self._rule.severity,
             "firing_count": len(firing),

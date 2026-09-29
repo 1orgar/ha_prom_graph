@@ -28,10 +28,20 @@ def test_duration_parsing() -> None:
     with pytest.raises(ValueError):
         duration_seconds("5 minutes")
 
+def test_condition_keys_and_symbols() -> None:
+    rule = AlertRule.from_subentry("Load", {"condition": "gte", "threshold": 2})
+    assert rule.matches(2) and not rule.matches(1.9)
+    assert rule.describe_condition() == ">= 2"
+    # `>` style symbols (hand-written data) are accepted too
+    assert AlertRule.from_subentry("Load", {"condition": "<", "threshold": 1}).condition == "lt"
+    assert AlertRule.from_subentry("Down", {}).describe_condition() == "any"
+
+
+
 
 def test_every_series_is_tracked_separately_with_for() -> None:
     rule = AlertRule(
-        name="HighLoad", condition=">", threshold=1, for_seconds=300, severity="warning",
+        name="HighLoad", condition="gt", threshold=1, for_seconds=300, severity="warning",
         summary="{{ $labels.instance }} load {{ $value }}",
     )
     tracker = AlertTracker()

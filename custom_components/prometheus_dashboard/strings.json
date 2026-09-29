@@ -198,12 +198,12 @@
     "condition": {
       "options": {
         "any": "Any series (query is the condition)",
-        ">": "> threshold",
-        ">=": "≥ threshold",
-        "<": "< threshold",
-        "<=": "≤ threshold",
-        "==": "= threshold",
-        "!=": "≠ threshold"
+        "gt": "> threshold",
+        "gte": "≥ threshold",
+        "lt": "< threshold",
+        "lte": "≤ threshold",
+        "eq": "= threshold",
+        "ne": "≠ threshold"
       }
     },
     "severity": {

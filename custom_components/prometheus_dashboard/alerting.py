@@ -32,14 +32,17 @@ STATE_INACTIVE = "inactive"
 STATE_PENDING = "pending"
 STATE_FIRING = "firing"
 
+# condition keys are translation keys ([a-z0-9_]), the symbol is only for display
 _OPS: dict[str, Callable[[float, float], bool]] = {
-    ">": operator.gt,
-    ">=": operator.ge,
-    "<": operator.lt,
-    "<=": operator.le,
-    "==": operator.eq,
-    "!=": operator.ne,
+    "gt": operator.gt,
+    "gte": operator.ge,
+    "lt": operator.lt,
+    "lte": operator.le,
+    "eq": operator.eq,
+    "ne": operator.ne,
 }
+CONDITION_SYMBOLS = {"gt": ">", "gte": ">=", "lt": "<", "lte": "<=", "eq": "==", "ne": "!="}
+_FROM_SYMBOL = {symbol: key for key, symbol in CONDITION_SYMBOLS.items()}
 
 LabelKey = tuple[tuple[str, str], ...]
 
@@ -81,9 +84,10 @@ class AlertRule:
     @classmethod
     def from_subentry(cls, title: str, data: dict[str, Any]) -> AlertRule:
         threshold = data.get(CONF_THRESHOLD)
+        condition = data.get(CONF_CONDITION) or CONDITION_ANY
         return cls(
             name=title,
-            condition=data.get(CONF_CONDITION, CONDITION_ANY),
+            condition=_FROM_SYMBOL.get(condition, condition),  # also accept `>` style symbols
             threshold=None if threshold in (None, "") else float(threshold),
             for_seconds=duration_seconds(data.get(CONF_FOR)),
             severity=data.get(CONF_SEVERITY) or None,
@@ -96,6 +100,12 @@ class AlertRule:
             return value == value  # NaN never matches
         op = _OPS.get(self.condition)
         return bool(op and op(value, self.threshold))
+
+    def describe_condition(self) -> str:
+        """`any` or e.g. `> 1` for the entity attributes."""
+        if self.condition == CONDITION_ANY or self.threshold is None:
+            return CONDITION_ANY
+        return f"{CONDITION_SYMBOLS.get(self.condition, self.condition)} {self.threshold:g}"
 
     def render_summary(self, labels: dict[str, str], value: float) -> str | None:
         """Prometheus-like templating: `{{ $value }}`, `{{ $labels.instance }}`."""

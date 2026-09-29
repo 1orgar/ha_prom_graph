@@ -40,7 +40,8 @@ CONF_SEVERITY = "severity"
 CONF_SUMMARY = "summary"
 
 CONDITION_ANY = "any"
-CONDITIONS = [CONDITION_ANY, ">", ">=", "<", "<=", "==", "!="]
+# translation keys must match [a-z0-9_]+, so no `>` style symbols here
+CONDITIONS = [CONDITION_ANY, "gt", "gte", "lt", "lte", "eq", "ne"]
 SEVERITIES = ["critical", "warning", "info"]
 
 EVENT_ALERT = f"{DOMAIN}_alert"

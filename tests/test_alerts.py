@@ -22,7 +22,7 @@ def _entry_with_alert(entry_data, **data) -> MockConfigEntry:
                 subentry_type="alert",
                 title="High load",
                 unique_id=None,
-                data={"query": "node_load1", "condition": ">", "threshold": 1, "severity": "critical", **data},
+                data={"query": "node_load1", "condition": "gt", "threshold": 1, "severity": "critical", **data},
             )
         ],
     )
@@ -76,7 +76,7 @@ async def test_alert_subentry_flow(hass: HomeAssistant, prometheus, config_entry
 
     # a comparison needs a threshold
     result = await hass.config_entries.subentries.async_configure(
-        result["flow_id"], {"name": "Load", "query": "node_load1", "condition": ">"}
+        result["flow_id"], {"name": "Load", "query": "node_load1", "condition": "gt"}
     )
     assert result["errors"] == {"threshold": "threshold_required"}
 
