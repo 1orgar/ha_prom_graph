@@ -31,6 +31,7 @@ Backend integration that connects Home Assistant to one or more Prometheus serve
 - 🔁 Reconfigure an existing server from the UI (also with connection test)
 - 📈 **PromQL sensors** — any instant query becomes a Home Assistant sensor (automations, history, statistics)
 - 🔔 **PromQL alerts** — alert rules with a firing window (`for`), every series tracked separately, binary sensor + events
+- 📲 **Alert notifications** — system notifications and push to the mobile app, critical alerts as critical push
 - 🚨 **Alerts sensor** — number of firing alerts, alert list in attributes (+ `prometheus_dashboard/alerts` for the Alerts card)
 - ♻️ **Request de-duplication + cache** — identical queries from all cards, tabs and sensors share one request
 - 🩺 Diagnostics (credentials redacted) and a Repairs issue while a server is unreachable
@@ -102,6 +103,23 @@ actions:
   (`source: home_assistant`, filter *Source* in the card).
 - The state is kept in memory: after a restart of Home Assistant pending windows start again.
 
+### Alert notifications
+
+Firing alerts are sent **without automations** (**⋮ → Configure → Alert notifications**):
+
+- **System notifications** (on by default): one notification per alert in the sidebar with the firing
+  series; updated while series change and removed automatically when the alert is resolved.
+- **Push** to the selected `notify` services, e.g. `notify.mobile_app_<phone>` of the Companion app:
+  one message per alert and poll with the newly firing series, and a *resolved* message that replaces it on the phone.
+- **Critical** severity is sent as a *critical* push: on iOS it plays a sound in silent / focus mode
+  (allow *Critical alerts* for the Home Assistant app), on Android it is delivered at once with high priority
+  through the alarm stream. *Warning* is sent as a time-sensitive / high-priority push.
+- Filters: severities (critical / warning / info / other) and sources — PromQL alerts of Home Assistant and
+  alerting rules of the Prometheus server (these need the alerts sensor). Every PromQL alert also has a **Notify** switch.
+- After a restart of Home Assistant alerts that are already firing are not pushed again.
+
+The `prometheus_dashboard_alert` event is still fired for custom automations.
+
 ### Options
 
 **⋮ → Configure**:
@@ -111,6 +129,7 @@ actions:
 | Polling interval | 30 s | update interval of PromQL sensors and the alerts sensor |
 | Query cache TTL | 5 s | identical queries within this time share one request; `0` disables the cache (concurrent requests are still merged) |
 | Alerts sensor | off | `sensor.<server>_firing_alerts` with pending count and alert list in attributes |
+| Alert notifications | system: on, push: none | see [Alert notifications](#alert-notifications) |
 
 ## 🧩 Websocket API
 

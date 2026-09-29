@@ -12,7 +12,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import dt as dt_util
 
-from .alerting import AlertRule, AlertTracker
+from .alerting import STATE_FIRING, AlertRule, AlertTracker
 from .api import PrometheusClient, PrometheusError, result_values
 from .const import (
     CONF_ALERTS,
@@ -21,9 +21,12 @@ from .const import (
     DEFAULT_SCAN_INTERVAL,
     DOMAIN,
     EVENT_ALERT,
+    SOURCE_LOCAL,
+    SOURCE_PROMETHEUS,
     SUBENTRY_ALERT,
     SUBENTRY_SENSOR,
 )
+from .notifications import AlertGroup, AlertNotifier, AlertSeries, prometheus_groups
 
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
@@ -64,6 +67,7 @@ class PrometheusCoordinator(DataUpdateCoordinator[PrometheusData]):
         )
         self.client = client
         self.alert_tracker = AlertTracker()
+        self.notifier = AlertNotifier(hass, entry)
 
     @property
     def alerts_enabled(self) -> bool:
@@ -143,7 +147,34 @@ class PrometheusCoordinator(DataUpdateCoordinator[PrometheusData]):
         except PrometheusError as err:
             raise UpdateFailed(f"Prometheus {self.client.base_url}: {err}") from err
         self._evaluate_alerts(data, rules)
+        await self._notify(data, rules)
         return data
+
+    async def _notify(self, data: PrometheusData, rules: dict[str, tuple[str, AlertRule]]) -> None:
+        """System / push notifications of firing alerts (local rules + Prometheus rules of the alerts sensor)."""
+        groups: list[AlertGroup] = []
+        for sub_id, (_query, rule) in rules.items():
+            if not rule.notify:
+                continue
+            firing = [i for i in self.alert_tracker.instances(sub_id) if i.state == STATE_FIRING]
+            groups.append(
+                AlertGroup(
+                    key=f"{SOURCE_LOCAL}:{sub_id}",
+                    name=rule.name,
+                    source=SOURCE_LOCAL,
+                    severity=rule.severity,
+                    series=[AlertSeries(i.labels, rule.render_summary(i.labels, i.value)) for i in firing],
+                )
+            )
+        failed: set[str] = set()
+        if data.alerts is not None:
+            groups.extend(prometheus_groups(data.alerts))
+        elif self.alerts_enabled:
+            failed.add(SOURCE_PROMETHEUS)
+        try:
+            await self.notifier.async_update(groups, failed)
+        except Exception:  # noqa: BLE001 - notifications must never break polling
+            _LOGGER.exception("Cannot send alert notifications")
 
     async def _fetch_alerts(self, data: PrometheusData) -> None:
         try:

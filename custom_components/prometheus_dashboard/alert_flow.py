@@ -8,6 +8,7 @@ import voluptuous as vol
 from homeassistant.config_entries import ConfigSubentryFlow, SubentryFlowResult
 from homeassistant.const import CONF_NAME
 from homeassistant.helpers.selector import (
+    BooleanSelector,
     DurationSelector,
     DurationSelectorConfig,
     NumberSelector,
@@ -27,6 +28,7 @@ from .const import (
     CONDITIONS,
     CONF_CONDITION,
     CONF_FOR,
+    CONF_NOTIFY,
     CONF_QUERY,
     CONF_SEVERITY,
     CONF_SUMMARY,
@@ -51,6 +53,7 @@ def alert_schema() -> vol.Schema:
                 )
             ),
             vol.Optional(CONF_SUMMARY): TextSelector(TextSelectorConfig(multiline=True)),
+            vol.Optional(CONF_NOTIFY, default=True): BooleanSelector(),
         }
     )
 

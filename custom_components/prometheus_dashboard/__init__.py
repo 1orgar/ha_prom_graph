@@ -75,7 +75,9 @@ async def _async_reload(hass: HomeAssistant, entry: PrometheusConfigEntry) -> No
 
 async def async_unload_entry(hass: HomeAssistant, entry: PrometheusConfigEntry) -> bool:
     """Unload a config entry."""
-    return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    if unloaded := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
+        entry.runtime_data.coordinator.notifier.async_dismiss_all()
+    return unloaded
 
 
 async def async_remove_entry(hass: HomeAssistant, entry: PrometheusConfigEntry) -> None:

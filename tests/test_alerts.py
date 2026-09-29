@@ -94,5 +94,6 @@ async def test_alert_subentry_flow(hass: HomeAssistant, prometheus, config_entry
     await hass.async_block_till_done()
 
     sub = next(s for s in config_entry.subentries.values() if s.subentry_type == "alert")
-    assert sub.data == {"query": "absent_metric", "condition": "any", "for": {"minutes": 5}}  # threshold dropped
+    # threshold dropped for "any"
+    assert sub.data == {"query": "absent_metric", "condition": "any", "for": {"minutes": 5}, "notify": True}
     assert hass.states.get("binary_sensor.home_missing").state == "off"

@@ -44,5 +44,21 @@ CONDITION_ANY = "any"
 CONDITIONS = [CONDITION_ANY, "gt", "gte", "lt", "lte", "eq", "ne"]
 SEVERITIES = ["critical", "warning", "info"]
 
+CONF_NOTIFY = "notify"  # per alert rule: send notifications, default true
+
 EVENT_ALERT = f"{DOMAIN}_alert"
 MAX_ALERT_SERIES_ATTRIBUTE = 50
+
+# Notifications of firing alerts (options of the server)
+CONF_NOTIFY_PERSISTENT = "notify_persistent"      # system notifications (sidebar), default true
+CONF_NOTIFY_SERVICES = "notify_services"          # notify.* services for push, e.g. mobile_app_phone
+CONF_NOTIFY_SEVERITIES = "notify_severities"      # severities sent as push
+CONF_NOTIFY_SOURCES = "notify_sources"            # local (Home Assistant rules) / prometheus (server rules)
+CONF_NOTIFY_CRITICAL = "notify_critical"          # critical severity -> critical push (iOS) / alarm stream (Android)
+CONF_NOTIFY_RESOLVED = "notify_resolved"          # push when an alert is resolved, default true
+
+SEVERITY_OTHER = "other"  # alerts without one of SEVERITIES
+NOTIFY_SEVERITIES = [*SEVERITIES, SEVERITY_OTHER]
+SOURCE_LOCAL = "local"
+SOURCE_PROMETHEUS = "prometheus"
+NOTIFY_SOURCES = [SOURCE_LOCAL, SOURCE_PROMETHEUS]

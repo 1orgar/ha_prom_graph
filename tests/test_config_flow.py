@@ -97,7 +97,23 @@ async def test_options_flow(hass: HomeAssistant, prometheus, config_entry) -> No
     result = await hass.config_entries.options.async_init(config_entry.entry_id)
     assert result["type"] is FlowResultType.FORM
     result = await hass.config_entries.options.async_configure(
-        result["flow_id"], {CONF_SCAN_INTERVAL: 60, CONF_CACHE_TTL: 10, CONF_ALERTS: True}
+        result["flow_id"],
+        {
+            CONF_SCAN_INTERVAL: 60,
+            CONF_CACHE_TTL: 10,
+            CONF_ALERTS: True,
+            "notifications": {"notify_services": ["notify.mobile_app_phone"], "notify_severities": ["critical"]},
+        },
     )
     assert result["type"] is FlowResultType.CREATE_ENTRY
-    assert config_entry.options == {CONF_SCAN_INTERVAL: 60, CONF_CACHE_TTL: 10, CONF_ALERTS: True}
+    assert config_entry.options == {
+        CONF_SCAN_INTERVAL: 60,
+        CONF_CACHE_TTL: 10,
+        CONF_ALERTS: True,
+        "notify_persistent": True,
+        "notify_services": ["mobile_app_phone"],  # `notify.` prefix dropped
+        "notify_severities": ["critical"],
+        "notify_sources": ["local", "prometheus"],
+        "notify_critical": True,
+        "notify_resolved": True,
+    }

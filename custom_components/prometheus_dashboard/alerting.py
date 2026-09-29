@@ -22,6 +22,7 @@ from typing import Any
 from .const import (
     CONF_CONDITION,
     CONF_FOR,
+    CONF_NOTIFY,
     CONF_SEVERITY,
     CONF_SUMMARY,
     CONF_THRESHOLD,
@@ -80,6 +81,7 @@ class AlertRule:
     for_seconds: float = 0.0
     severity: str | None = None
     summary: str | None = None
+    notify: bool = True
 
     @classmethod
     def from_subentry(cls, title: str, data: dict[str, Any]) -> AlertRule:
@@ -92,6 +94,7 @@ class AlertRule:
             for_seconds=duration_seconds(data.get(CONF_FOR)),
             severity=data.get(CONF_SEVERITY) or None,
             summary=data.get(CONF_SUMMARY) or None,
+            notify=bool(data.get(CONF_NOTIFY, True)),
         )
 
     def matches(self, value: float) -> bool:

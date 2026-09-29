@@ -74,6 +74,28 @@
           "scan_interval": "How often PromQL sensors and the alerts sensor are updated",
           "cache_ttl": "Identical queries from cards, tabs and sensors within this time share one request to Prometheus. 0 disables the cache (concurrent requests are still merged)",
           "alerts_enabled": "Sensor with the number of firing alerts; the alert list is in its attributes"
+        },
+        "sections": {
+          "notifications": {
+            "name": "Alert notifications",
+            "description": "Firing PromQL alerts (and Prometheus alerts when the alerts sensor is on) are sent as system notifications and push messages.",
+            "data": {
+              "notify_persistent": "System notifications",
+              "notify_services": "Push to (notify services)",
+              "notify_severities": "Push for severities",
+              "notify_sources": "Alert sources",
+              "notify_critical": "Critical severity as critical push",
+              "notify_resolved": "Push when resolved"
+            },
+            "data_description": {
+              "notify_persistent": "One notification per alert in the sidebar, updated while series change and removed when resolved",
+              "notify_services": "e.g. notify.mobile_app_<phone> of the Home Assistant Companion app. Empty = no push",
+              "notify_severities": "\"Other\" = alerts without a severity or with a custom one",
+              "notify_sources": "PromQL alerts of Home Assistant and / or alerting rules of the Prometheus server (need the alerts sensor)",
+              "notify_critical": "iOS: critical alert that sounds in silent / focus mode (allow critical alerts for the app). Android: high priority through the alarm stream",
+              "notify_resolved": "Replaces the firing notification on the phone"
+            }
+          }
         }
       }
     }
@@ -147,13 +169,15 @@
             "threshold": "Threshold",
             "for": "For (firing window)",
             "severity": "Severity",
-            "summary": "Summary"
+            "summary": "Summary",
+            "notify": "Notify"
           },
           "data_description": {
             "query": "Instant query. Either the query itself selects the problem (e.g. up == 0) with condition \"any series\", or its values are compared with a threshold",
             "condition": "\"Any series\": every series returned by the query is active",
             "for": "How long a series must stay active before the alert fires. Empty = at once",
-            "summary": "Templates: {{ $value }}, {{ $labels.instance }}"
+            "summary": "Templates: {{ $value }}, {{ $labels.instance }}",
+            "notify": "System notification and push (Configure on the integration page)"
           }
         },
         "reconfigure": {
@@ -166,7 +190,11 @@
             "threshold": "Threshold",
             "for": "For (firing window)",
             "severity": "Severity",
-            "summary": "Summary"
+            "summary": "Summary",
+            "notify": "Notify"
+          },
+          "data_description": {
+            "notify": "System notification and push (Configure on the integration page)"
           }
         }
       },
@@ -211,6 +239,20 @@
         "critical": "Critical",
         "warning": "Warning",
         "info": "Info"
+      }
+    },
+    "notify_severity": {
+      "options": {
+        "critical": "Critical",
+        "warning": "Warning",
+        "info": "Info",
+        "other": "Other"
+      }
+    },
+    "notify_source": {
+      "options": {
+        "local": "PromQL alerts (Home Assistant)",
+        "prometheus": "Prometheus alerting rules"
       }
     }
   },
