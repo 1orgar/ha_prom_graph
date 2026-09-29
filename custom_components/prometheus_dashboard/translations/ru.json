@@ -89,7 +89,7 @@
             },
             "data_description": {
               "notify_persistent": "Одно уведомление на алерт в боковой панели; обновляется при изменении серий и удаляется при восстановлении",
-              "notify_services": "Например notify.mobile_app_<телефон> приложения Home Assistant. Пусто = без пушей",
+              "notify_services": "Устройства приложения Home Assistant, например notify.mobile_app_iphone. Пусто = без пушей",
               "notify_severities": "«Другие» — алерты без severity или с собственным значением",
               "notify_sources": "PromQL-алерты Home Assistant и/или правила алертинга сервера Prometheus (нужен сенсор алертов)",
               "notify_critical": "iOS: критическое оповещение со звуком в беззвучном режиме и фокусе (разрешите критические оповещения для приложения). Android: высокий приоритет через поток будильника",

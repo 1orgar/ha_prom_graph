@@ -89,7 +89,7 @@
             },
             "data_description": {
               "notify_persistent": "One notification per alert in the sidebar, updated while series change and removed when resolved",
-              "notify_services": "e.g. notify.mobile_app_<phone> of the Home Assistant Companion app. Empty = no push",
+              "notify_services": "Home Assistant Companion app devices, e.g. notify.mobile_app_iphone. Empty = no push",
               "notify_severities": "\"Other\" = alerts without a severity or with a custom one",
               "notify_sources": "PromQL alerts of Home Assistant and / or alerting rules of the Prometheus server (need the alerts sensor)",
               "notify_critical": "iOS: critical alert that sounds in silent / focus mode (allow critical alerts for the app). Android: high priority through the alarm stream",
