@@ -13,20 +13,27 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from homeassistant.util import dt as dt_util
 
 from .alerting import STATE_FIRING, AlertRule, AlertTracker
+from .alertmanager import AlertmanagerClient, silenced_by
 from .api import PrometheusClient, PrometheusError, result_values
 from .const import (
+    ACTION_SILENCE_PREFIX,
+    CONF_ALERTMANAGER_URL,
     CONF_ALERTS,
     CONF_QUERY,
     CONF_SCAN_INTERVAL,
+    CONF_SILENCE_DURATION,
     DEFAULT_SCAN_INTERVAL,
+    DEFAULT_SILENCE_DURATION,
     DOMAIN,
     EVENT_ALERT,
+    EVENT_SILENCE,
     SOURCE_LOCAL,
     SOURCE_PROMETHEUS,
     SUBENTRY_ALERT,
     SUBENTRY_SENSOR,
 )
 from .notifications import AlertGroup, AlertNotifier, AlertSeries, prometheus_groups
+from .storage import AlertStateStore
 
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
@@ -67,7 +74,78 @@ class PrometheusCoordinator(DataUpdateCoordinator[PrometheusData]):
         )
         self.client = client
         self.alert_tracker = AlertTracker()
-        self.notifier = AlertNotifier(hass, entry)
+        am_url = (entry.options.get(CONF_ALERTMANAGER_URL) or "").strip()
+        self.alertmanager = AlertmanagerClient(hass, am_url, entry.data) if am_url else None
+        self.notifier = AlertNotifier(hass, entry, self.alertmanager)
+        self.store = AlertStateStore(hass, entry.entry_id)
+        # active Alertmanager silences of the last poll (None = unknown / not configured)
+        self.silences: list[dict[str, Any]] | None = None
+
+    # ---- alert state persistence ----
+    def state_snapshot(self) -> dict[str, Any]:
+        return {"alerts": self.alert_tracker.as_dict(), "notifier": self.notifier.as_dict()}
+
+    async def async_restore_state(self) -> None:
+        """Load the saved alert state (before the first poll)."""
+        data = await self.store.async_load()
+        if not data:
+            return
+        restored = self.alert_tracker.restore(data.get("alerts") or {}, self.alert_rules())
+        self.notifier.restore(data.get("notifier") or {})
+        _LOGGER.debug("%s: restored %d alert series", self.config_entry.title, restored)
+
+    async def async_save_state(self) -> None:
+        await self.store.async_save_now(self.state_snapshot())
+
+    # ---- Alertmanager ----
+    async def async_silence(self, labels: dict[str, str], minutes: float, comment: str) -> str:
+        if self.alertmanager is None:
+            raise PrometheusError("Alertmanager URL is not configured")
+        silence_id = await self.alertmanager.create_silence(labels, minutes, comment)
+        self.hass.bus.async_fire(
+            EVENT_SILENCE,
+            {"entry_id": self.config_entry.entry_id, "silence_id": silence_id, "labels": labels, "minutes": minutes},
+        )
+        return silence_id
+
+    async def async_handle_action(self, action: str) -> bool:
+        """"Silence" button of a push notification; True when the action belonged to this server."""
+        if not action.startswith(ACTION_SILENCE_PREFIX):
+            return False
+        target = self.notifier.pop_action(action.removeprefix(ACTION_SILENCE_PREFIX))
+        if target is None:
+            return False
+        minutes = float(self.config_entry.options.get(CONF_SILENCE_DURATION, DEFAULT_SILENCE_DURATION))
+        try:
+            await self.async_silence(target["labels"], minutes, f"Silenced from a Home Assistant notification ({target['alert']})")
+        except PrometheusError as err:
+            _LOGGER.warning("Cannot silence %s: %s", target["alert"], err)
+            return True
+        self.store.async_schedule_save(self.state_snapshot)
+        await self.async_request_refresh()
+        return True
+
+    def mark_silenced(self, alerts: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """`silenced: true` on alerts matched by an active Alertmanager silence (for the Alerts card)."""
+        if not self.silences:
+            return alerts
+        out = []
+        for alert in alerts:
+            if silence := silenced_by(self.silences, alert.get("labels") or {}):
+                alert = {**alert, "silenced": True, "silenced_until": silence.get("endsAt")}
+            out.append(alert)
+        return out
+
+    async def _fetch_silences(self) -> None:
+        if self.alertmanager is None:
+            self.silences = None
+            return
+        try:
+            self.silences = await self.alertmanager.active_silences()
+        except PrometheusError as err:
+            # silences unknown: notify as usual, the next poll tries again
+            _LOGGER.debug("Alertmanager %s: %s", self.alertmanager.base_url, err)
+            self.silences = None
 
     @property
     def alerts_enabled(self) -> bool:
@@ -141,6 +219,7 @@ class PrometheusCoordinator(DataUpdateCoordinator[PrometheusData]):
         tasks = [run(sub_id, q) for sub_id, q in queries.items()]
         if self.alerts_enabled:
             tasks.append(self._fetch_alerts(data))
+        tasks.append(self._fetch_silences())
 
         try:
             await asyncio.gather(*tasks)
@@ -148,6 +227,7 @@ class PrometheusCoordinator(DataUpdateCoordinator[PrometheusData]):
             raise UpdateFailed(f"Prometheus {self.client.base_url}: {err}") from err
         self._evaluate_alerts(data, rules)
         await self._notify(data, rules)
+        self.store.async_schedule_save(self.state_snapshot)
         return data
 
     async def _notify(self, data: PrometheusData, rules: dict[str, tuple[str, AlertRule]]) -> None:
@@ -172,7 +252,7 @@ class PrometheusCoordinator(DataUpdateCoordinator[PrometheusData]):
         elif self.alerts_enabled:
             failed.add(SOURCE_PROMETHEUS)
         try:
-            await self.notifier.async_update(groups, failed)
+            await self.notifier.async_update(groups, failed, self.silences)
         except Exception:  # noqa: BLE001 - notifications must never break polling
             _LOGGER.exception("Cannot send alert notifications")
 

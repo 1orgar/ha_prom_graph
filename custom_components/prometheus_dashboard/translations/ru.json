@@ -10,13 +10,17 @@
           "name": "Название",
           "username": "Имя пользователя (необязательно)",
           "password": "Пароль (необязательно)",
-          "verify_ssl": "Проверять SSL-сертификат"
+          "verify_ssl": "Проверять SSL-сертификат",
+          "bearer_token": "Bearer-токен (необязательно)",
+          "org_id": "Тенант / X-Scope-OrgID (необязательно)"
         },
         "data_description": {
           "prometheus_url": "Базовый URL Prometheus или совместимого API (VictoriaMetrics, Thanos, Mimir), например http://192.168.1.100:9090",
           "name": "Понятное название сервера, отображается в редакторе карточек",
           "username": "Логин для Basic Auth",
-          "password": "Пароль для Basic Auth"
+          "password": "Пароль для Basic Auth",
+          "bearer_token": "Передаётся как `Authorization: Bearer`, например для Grafana Cloud или прокси перед Thanos. Используется вместо логина и пароля",
+          "org_id": "Заголовок тенанта для Mimir / Cortex с несколькими тенантами"
         }
       },
       "test_result": {
@@ -32,13 +36,17 @@
           "name": "Название",
           "username": "Имя пользователя (необязательно)",
           "password": "Пароль (необязательно)",
-          "verify_ssl": "Проверять SSL-сертификат"
+          "verify_ssl": "Проверять SSL-сертификат",
+          "bearer_token": "Bearer-токен (необязательно)",
+          "org_id": "Тенант / X-Scope-OrgID (необязательно)"
         },
         "data_description": {
           "prometheus_url": "Базовый URL Prometheus или совместимого API (VictoriaMetrics, Thanos, Mimir), например http://192.168.1.100:9090",
           "name": "Понятное название сервера, отображается в редакторе карточек",
           "username": "Логин для Basic Auth",
-          "password": "Пароль для Basic Auth"
+          "password": "Пароль для Basic Auth",
+          "bearer_token": "Передаётся как `Authorization: Bearer`, например для Grafana Cloud или прокси перед Thanos. Используется вместо логина и пароля",
+          "org_id": "Заголовок тенанта для Mimir / Cortex с несколькими тенантами"
         }
       },
       "reconfigure_result": {
@@ -85,7 +93,9 @@
               "notify_severities": "Пуш для severity",
               "notify_sources": "Источники алертов",
               "notify_critical": "Critical — критическим пушем",
-              "notify_resolved": "Пуш при восстановлении"
+              "notify_resolved": "Пуш при восстановлении",
+              "notify_repeat": "Напоминать каждые",
+              "notify_repeat_severities": "Напоминания для severity"
             },
             "data_description": {
               "notify_persistent": "Одно уведомление на алерт в боковой панели; обновляется при изменении серий и удаляется при восстановлении",
@@ -93,11 +103,28 @@
               "notify_severities": "«Другие» — алерты без severity или с собственным значением",
               "notify_sources": "PromQL-алерты Home Assistant и/или правила алертинга сервера Prometheus (нужен сенсор алертов)",
               "notify_critical": "iOS: критическое оповещение со звуком в беззвучном режиме и фокусе (разрешите критические оповещения для приложения). Android: высокий приоритет через поток будильника",
-              "notify_resolved": "Заменяет на телефоне уведомление о срабатывании"
+              "notify_resolved": "Заменяет на телефоне уведомление о срабатывании",
+              "notify_repeat": "Повторить пуш, если алерт всё ещё горит. 0 = без напоминаний",
+              "notify_repeat_severities": "Для каких severity слать напоминания (по умолчанию только critical)"
+            }
+          },
+          "alertmanager": {
+            "name": "Alertmanager",
+            "description": "Заглушённые (silence) алерты не присылаются и отмечаются в карточке алертов. В пуше о срабатывании появляется кнопка «Заглушить». Используются учётные данные подключения.",
+            "data": {
+              "alertmanager_url": "URL Alertmanager",
+              "silence_duration": "Длительность silence"
+            },
+            "data_description": {
+              "alertmanager_url": "Например http://192.168.1.100:9093. Пусто = без Alertmanager",
+              "silence_duration": "Silence, созданный кнопкой в пуше или в карточке алертов"
             }
           }
         }
       }
+    },
+    "error": {
+      "alertmanager_error": "Alertmanager не отвечает: {error_detail}"
     }
   },
   "config_subentries": {
@@ -170,14 +197,16 @@
             "for": "Окно срабатывания (for)",
             "severity": "Важность (severity)",
             "summary": "Описание",
-            "notify": "Уведомлять"
+            "notify": "Уведомлять",
+            "keep_firing_for": "Держать firing ещё"
           },
           "data_description": {
             "query": "Мгновенный запрос. Либо сам запрос выбирает проблему (например up == 0) с условием «любая серия», либо значения сравниваются с порогом",
             "condition": "«Любая серия»: активна каждая серия, которую вернул запрос",
             "for": "Сколько серия должна оставаться активной, прежде чем алерт сработает. Пусто = сразу",
             "summary": "Шаблоны: {{ $value }}, {{ $labels.instance }}",
-            "notify": "Системное уведомление и пуш (настраиваются в «Настроить» на странице интеграции)"
+            "notify": "Системное уведомление и пуш (настраиваются в «Настроить» на странице интеграции)",
+            "keep_firing_for": "Сработавшая серия гаснет, только если условие ложно столько времени (без мигания при коротких провалах)"
           }
         },
         "reconfigure": {
@@ -191,10 +220,12 @@
             "for": "Окно срабатывания (for)",
             "severity": "Важность (severity)",
             "summary": "Описание",
-            "notify": "Уведомлять"
+            "notify": "Уведомлять",
+            "keep_firing_for": "Держать firing ещё"
           },
           "data_description": {
-            "notify": "Системное уведомление и пуш (настраиваются в «Настроить» на странице интеграции)"
+            "notify": "Системное уведомление и пуш (настраиваются в «Настроить» на странице интеграции)",
+            "keep_firing_for": "Сработавшая серия гаснет, только если условие ложно столько времени (без мигания при коротких провалах)"
           }
         }
       },
@@ -261,12 +292,52 @@
       "alerts": {
         "name": "Активные алерты"
       }
+    },
+    "button": {
+      "test_notification": {
+        "name": "Тестовое уведомление"
+      },
+      "test_notification_critical": {
+        "name": "Тестовое критическое уведомление"
+      }
     }
   },
   "issues": {
     "unreachable": {
       "title": "Сервер Prometheus {name} недоступен",
       "description": "PromQL-сенсоры и алерты сервера **{name}** не обновляются: {error}\n\nПроверьте, что сервер работает, или измените подключение через **Изменить настройки** на странице интеграции. Сообщение исчезнет само, когда сервер снова ответит."
+    }
+  },
+  "services": {
+    "query": {
+      "name": "PromQL-запрос",
+      "description": "Выполняет мгновенный PromQL-запрос и возвращает результат (используйте response_variable).",
+      "fields": {
+        "entry_id": {
+          "name": "Сервер",
+          "description": "Сервер Prometheus; пусто = первый"
+        },
+        "query": {
+          "name": "Запрос",
+          "description": "Мгновенный PromQL-запрос"
+        },
+        "time": {
+          "name": "Время",
+          "description": "Момент вычисления; пусто = сейчас"
+        },
+        "aggregate": {
+          "name": "Объединение серий",
+          "description": "Как `value` считается из нескольких серий"
+        }
+      }
+    }
+  },
+  "exceptions": {
+    "server_not_found": {
+      "message": "Сервер Prometheus {entry_id} не настроен или не загружен"
+    },
+    "query_failed": {
+      "message": "Ошибка запроса: {error}"
     }
   }
 }

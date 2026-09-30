@@ -1,0 +1,13 @@
+{
+  "entity": {
+    "button": {
+      "test_notification": { "default": "mdi:bell-check" },
+      "test_notification_critical": { "default": "mdi:bell-alert" }
+    }
+  },
+  "services": {
+    "query": {
+      "service": "mdi:database-search"
+    }
+  }
+}

@@ -8,13 +8,27 @@ from functools import wraps
 from typing import Any
 from urllib.parse import quote
 
+from types import MappingProxyType
+
 import voluptuous as vol
 from homeassistant.components import websocket_api
-from homeassistant.config_entries import ConfigEntryState
+from homeassistant.config_entries import ConfigEntryState, ConfigSubentry
 from homeassistant.core import HomeAssistant, callback
 
+from .alert_flow import async_validate_alert, clean_alert_data
+from .alerting import duration_seconds
 from .api import PrometheusClient, PrometheusError
-from .const import CONF_NAME, CONF_PROMETHEUS_URL, DEFAULT_NAME, DOMAIN
+from .const import (
+    CONDITION_ANY,
+    CONDITIONS,
+    CONF_NAME,
+    CONF_PROMETHEUS_URL,
+    CONF_SILENCE_DURATION,
+    DEFAULT_NAME,
+    DEFAULT_SILENCE_DURATION,
+    DOMAIN,
+    SUBENTRY_ALERT,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -72,6 +86,8 @@ def async_register_websocket_commands(hass: HomeAssistant) -> None:
         ws_metadata,
         ws_alerts,
         ws_entries,
+        ws_create_alert,
+        ws_silence,
     ):
         websocket_api.async_register_command(hass, command)
 
@@ -172,8 +188,96 @@ async def ws_alerts(msg: dict[str, Any], client: PrometheusClient) -> dict[str, 
     alerts = await client.alerts()
     coordinator = getattr(client, "coordinator", None)
     if coordinator is not None:
-        alerts = [*alerts, *coordinator.local_alerts()]
+        alerts = coordinator.mark_silenced([*alerts, *coordinator.local_alerts()])
     return {"alerts": alerts}
+
+
+def _loaded_entry(hass: HomeAssistant, entry_id: str | None):
+    entries = hass.config_entries.async_loaded_entries(DOMAIN)
+    if entry_id:
+        entries = [e for e in entries if e.entry_id == entry_id]
+    return entries[0] if entries else None
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): "prometheus_dashboard/create_alert",
+        ENTRY_ID: str,
+        vol.Required("name"): vol.All(str, vol.Length(min=1)),
+        vol.Required("query"): vol.All(str, vol.Length(min=1)),
+        vol.Optional("condition", default=CONDITION_ANY): vol.In(CONDITIONS),
+        vol.Optional("threshold"): vol.Coerce(float),
+        vol.Optional("for"): vol.Any(str, int, float, dict),
+        vol.Optional("severity"): str,
+        vol.Optional("summary"): str,
+    }
+)
+@websocket_api.require_admin
+@websocket_api.async_response
+async def ws_create_alert(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    """PromQL alert from a card ("Create alert" in the card editor); validated like the config flow."""
+    entry = _loaded_entry(hass, msg.get("entry_id") or None)
+    if entry is None:
+        connection.send_error(msg["id"], "not_found", "Prometheus server is not configured or not loaded")
+        return
+    fields = ("name", "query", "condition", "threshold", "for", "severity", "summary")
+    user_input = {k: msg[k] for k in fields if k in msg}
+    if "for" in user_input:
+        try:
+            duration_seconds(user_input["for"])
+        except ValueError as err:
+            connection.send_error(msg["id"], "invalid_format", str(err))
+            return
+    errors, placeholders = await async_validate_alert(hass, entry, user_input)
+    if errors:
+        field_name, reason = next(iter(errors.items()))
+        connection.send_error(msg["id"], reason, f"{field_name}: {placeholders.get('error_detail', reason)}")
+        return
+    subentry = ConfigSubentry(
+        data=MappingProxyType(clean_alert_data(user_input)),
+        subentry_type=SUBENTRY_ALERT,
+        title=user_input["name"],
+        unique_id=None,
+    )
+    # adding a subentry reloads the entry: the binary sensor appears at once
+    hass.config_entries.async_add_subentry(entry, subentry)
+    connection.send_result(
+        msg["id"],
+        {
+            "entry_id": entry.entry_id,
+            "subentry_id": subentry.subentry_id,
+            "series": int(placeholders.get("series", 0)),
+            "active": int(placeholders.get("active", 0)),
+        },
+    )
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): "prometheus_dashboard/silence",
+        ENTRY_ID: str,
+        vol.Required("labels"): {str: str},
+        vol.Optional("minutes"): vol.All(vol.Coerce(float), vol.Range(min=1, max=100800)),
+        vol.Optional("comment", default="Silenced from Home Assistant"): str,
+    }
+)
+@websocket_api.require_admin
+@websocket_api.async_response
+async def ws_silence(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    """Create an Alertmanager silence for one alert series (Alerts card)."""
+    entry = _loaded_entry(hass, msg.get("entry_id") or None)
+    if entry is None:
+        connection.send_error(msg["id"], "not_found", "Prometheus server is not configured or not loaded")
+        return
+    coordinator = entry.runtime_data.coordinator
+    minutes = msg.get("minutes") or float(entry.options.get(CONF_SILENCE_DURATION, DEFAULT_SILENCE_DURATION))
+    try:
+        silence_id = await coordinator.async_silence(msg["labels"], minutes, msg["comment"])
+    except PrometheusError as err:
+        connection.send_error(msg["id"], err.reason, str(err))
+        return
+    await coordinator.async_request_refresh()
+    connection.send_result(msg["id"], {"silence_id": silence_id})
 
 
 @websocket_api.websocket_command({vol.Required("type"): "prometheus_dashboard/entries"})
@@ -188,6 +292,8 @@ def ws_entries(hass: HomeAssistant, connection: websocket_api.ActiveConnection, 
                 "name": entry.title or entry.data.get(CONF_NAME, DEFAULT_NAME),
                 "url": entry.data.get(CONF_PROMETHEUS_URL),
                 "loaded": entry.state is ConfigEntryState.LOADED,
+                # the Alerts card shows "Silence" buttons only when Alertmanager is configured
+                "alertmanager": bool(entry.options.get("alertmanager_url")),
                 "cache": entry.runtime_data.client.cache.stats()
                 if entry.state is ConfigEntryState.LOADED
                 else None,

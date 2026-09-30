@@ -1,0 +1,27 @@
+query:
+  fields:
+    entry_id:
+      selector:
+        config_entry:
+          integration: prometheus_dashboard
+    query:
+      required: true
+      example: sum(rate(node_network_receive_bytes_total[5m]))
+      selector:
+        text:
+          multiline: true
+    time:
+      selector:
+        datetime:
+    aggregate:
+      default: first
+      selector:
+        select:
+          translation_key: aggregate
+          options:
+            - first
+            - sum
+            - avg
+            - min
+            - max
+            - count

@@ -15,19 +15,26 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .cache import RequestCache
 from .const import (
+    CONF_BEARER_TOKEN,
+    CONF_ORG_ID,
     CONF_PASSWORD,
     CONF_PROMETHEUS_URL,
     CONF_USERNAME,
     CONF_VERIFY_SSL,
     REQUEST_TIMEOUT,
+    RETRY_DELAYS,
     TEST_TIMEOUT,
 )
+
+# gateway errors of proxies / load balancers in front of Prometheus: worth a retry
+RETRY_STATUS = {502, 503, 504}
 
 
 class PrometheusError(Exception):
     """Base error. `reason` is a translation key used by the config flow."""
 
     reason = "unknown"
+    retryable = False  # transient error: the request is repeated (RETRY_DELAYS)
 
     def __init__(self, detail: str = "") -> None:
         super().__init__(detail or self.reason)
@@ -36,6 +43,7 @@ class PrometheusError(Exception):
 
 class CannotConnect(PrometheusError):
     reason = "cannot_connect"
+    retryable = True
 
 
 class InvalidAuth(PrometheusError):
@@ -43,7 +51,12 @@ class InvalidAuth(PrometheusError):
 
 
 class ConnectionTimeout(PrometheusError):
+    # not retried: a slow server would block a poll for several timeouts
     reason = "timeout"
+
+
+class GatewayError(CannotConnect):
+    """502 / 503 / 504 of a proxy in front of Prometheus."""
 
 
 class SSLError(PrometheusError):
@@ -68,6 +81,16 @@ class ConnectionTestResult:
     targets_total: int | None
 
 
+def auth_headers(config: Mapping[str, Any]) -> dict[str, str]:
+    """Bearer token and tenant header of a connection."""
+    headers: dict[str, str] = {}
+    if token := (config.get(CONF_BEARER_TOKEN) or "").strip():
+        headers["Authorization"] = f"Bearer {token}"
+    if org := (config.get(CONF_ORG_ID) or "").strip():
+        headers["X-Scope-OrgID"] = org
+    return headers
+
+
 def normalize_url(url: str) -> str:
     """Normalize the base URL (strip spaces, trailing slash, add scheme)."""
     url = url.strip().rstrip("/")
@@ -84,7 +107,9 @@ class PrometheusClient:
         self._base_url = normalize_url(config[CONF_PROMETHEUS_URL])
         self._verify_ssl = config.get(CONF_VERIFY_SSL, True)
         self._auth = None
-        if config.get(CONF_USERNAME):
+        self._headers = auth_headers(config)
+        # Basic auth and a bearer token both use `Authorization`: the token wins
+        if config.get(CONF_USERNAME) and "Authorization" not in self._headers:
             self._auth = aiohttp.BasicAuth(config[CONF_USERNAME], config.get(CONF_PASSWORD) or "")
         self.cache = RequestCache(cache_ttl)
         # set by async_setup_entry: PromQL alerts of Home Assistant are added to `/alerts`
@@ -123,6 +148,22 @@ class PrometheusClient:
         params: Mapping[str, Any] | None,
         timeout: float,
     ) -> dict[str, Any]:
+        """One request, repeated on transient network errors (not on query / auth errors)."""
+        for delay in (*RETRY_DELAYS, None):
+            try:
+                return await self._request_once(path, params, timeout)
+            except PrometheusError as err:
+                if not err.retryable or delay is None:
+                    raise
+            await asyncio.sleep(delay)
+        raise AssertionError("unreachable")
+
+    async def _request_once(
+        self,
+        path: str,
+        params: Mapping[str, Any] | None,
+        timeout: float,
+    ) -> dict[str, Any]:
         url = f"{self._base_url}{path}"
         if params:
             url = f"{url}?{urlencode(params, doseq=True)}"
@@ -131,11 +172,14 @@ class PrometheusClient:
             async with self._session.get(
                 url,
                 auth=self._auth,
+                headers=self._headers or None,
                 ssl=self._verify_ssl,
                 timeout=aiohttp.ClientTimeout(total=timeout),
             ) as response:
                 if response.status in (401, 403):
                     raise InvalidAuth(f"HTTP {response.status}")
+                if response.status in RETRY_STATUS:
+                    raise GatewayError(f"HTTP {response.status}")
                 try:
                     payload = await response.json(content_type=None)
                 except (ValueError, aiohttp.ContentTypeError) as err:

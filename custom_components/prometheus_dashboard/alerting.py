@@ -4,10 +4,10 @@ Every series returned by the query is an alert instance of its own:
 
     inactive --(condition true)--> pending --(true for `for` seconds)--> firing
         ^                                                                  |
-        +-------------------------(condition false / series gone)----------+
+        +---(condition false / series gone, for `keep_firing_for` seconds)-+
 
-The state lives in memory: after a restart pending timers start again
-(Prometheus without `ALERTS_FOR_STATE` behaves the same).
+The state is saved to `.storage` and restored after a restart of Home Assistant, so pending
+windows go on and firing alerts stay firing (not when HA was down for longer than an hour).
 """
 
 from __future__ import annotations
@@ -22,6 +22,7 @@ from typing import Any
 from .const import (
     CONF_CONDITION,
     CONF_FOR,
+    CONF_KEEP_FIRING_FOR,
     CONF_NOTIFY,
     CONF_SEVERITY,
     CONF_SUMMARY,
@@ -82,6 +83,7 @@ class AlertRule:
     severity: str | None = None
     summary: str | None = None
     notify: bool = True
+    keep_firing_seconds: float = 0.0
 
     @classmethod
     def from_subentry(cls, title: str, data: dict[str, Any]) -> AlertRule:
@@ -95,6 +97,7 @@ class AlertRule:
             severity=data.get(CONF_SEVERITY) or None,
             summary=data.get(CONF_SUMMARY) or None,
             notify=bool(data.get(CONF_NOTIFY, True)),
+            keep_firing_seconds=duration_seconds(data.get(CONF_KEEP_FIRING_FOR)),
         )
 
     def matches(self, value: float) -> bool:
@@ -134,6 +137,28 @@ class AlertInstance:
     value: float
     active_since: datetime
     state: str = STATE_PENDING
+    # firing series whose condition cleared: resolves after `keep_firing_for` (None = still active)
+    cleared_at: datetime | None = None
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "labels": self.labels,
+            "value": self.value,
+            "active_since": self.active_since.isoformat(),
+            "state": self.state,
+            "cleared_at": self.cleared_at.isoformat() if self.cleared_at else None,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> AlertInstance:
+        cleared = data.get("cleared_at")
+        return cls(
+            labels=dict(data["labels"]),
+            value=float(data["value"]),
+            active_since=datetime.fromisoformat(data["active_since"]),
+            state=str(data.get("state", STATE_PENDING)),
+            cleared_at=datetime.fromisoformat(cleared) if cleared else None,
+        )
 
 
 @dataclass
@@ -179,14 +204,47 @@ class AlertTracker:
                 inst = AlertInstance(labels=labels, value=value, active_since=now)
                 state.instances[key] = inst
             inst.value = value
+            inst.cleared_at = None  # active again: a running keep_firing_for window is cancelled
             if inst.state == STATE_PENDING and (now - inst.active_since).total_seconds() >= rule.for_seconds:
                 inst.state = STATE_FIRING
                 transitions.append(Transition(labels, value, STATE_FIRING))
         for key in [k for k in state.instances if k not in seen]:
-            inst = state.instances.pop(key)
+            inst = state.instances[key]
+            if inst.state == STATE_FIRING and rule.keep_firing_seconds > 0:
+                # like Prometheus `keep_firing_for`: no flapping firing / resolved on short dips
+                if inst.cleared_at is None:
+                    inst.cleared_at = now
+                if (now - inst.cleared_at).total_seconds() < rule.keep_firing_seconds:
+                    continue
+            del state.instances[key]
             if inst.state == STATE_FIRING:
                 transitions.append(Transition(inst.labels, None, "resolved"))
         return transitions
+
+    # ---- persistence (restored after a restart of Home Assistant) ----
+    def as_dict(self) -> dict[str, list[dict[str, Any]]]:
+        return {
+            rule_id: [inst.as_dict() for inst in state.instances.values()]
+            for rule_id, state in self._rules.items()
+            if state.instances
+        }
+
+    def restore(self, data: dict[str, list[dict[str, Any]]], rule_ids: Iterable[str]) -> int:
+        """Load saved instances of rules that still exist; returns the number of restored series."""
+        keep = set(rule_ids)
+        restored = 0
+        for rule_id, items in (data or {}).items():
+            if rule_id not in keep:
+                continue
+            state = self._rules.setdefault(rule_id, RuleState())
+            for item in items:
+                try:
+                    inst = AlertInstance.from_dict(item)
+                except (KeyError, TypeError, ValueError):
+                    continue
+                state.instances[_key(inst.labels)] = inst
+                restored += 1
+        return restored
 
     def instances(self, rule_id: str) -> list[AlertInstance]:
         state = self._rules.get(rule_id)

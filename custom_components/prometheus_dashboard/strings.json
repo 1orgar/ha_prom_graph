@@ -10,13 +10,17 @@
           "name": "Name",
           "username": "Username (optional)",
           "password": "Password (optional)",
-          "verify_ssl": "Verify SSL certificate"
+          "verify_ssl": "Verify SSL certificate",
+          "bearer_token": "Bearer token (optional)",
+          "org_id": "Tenant / X-Scope-OrgID (optional)"
         },
         "data_description": {
           "prometheus_url": "Base URL of Prometheus or a compatible API (VictoriaMetrics, Thanos, Mimir), e.g. http://192.168.1.100:9090",
           "name": "A friendly name for this server, shown in the card editor",
           "username": "Basic auth username",
-          "password": "Basic auth password"
+          "password": "Basic auth password",
+          "bearer_token": "Sent as `Authorization: Bearer`, e.g. Grafana Cloud or a proxy in front of Thanos. Used instead of the username / password",
+          "org_id": "Tenant header of Mimir / Cortex multi-tenant setups"
         }
       },
       "test_result": {
@@ -32,13 +36,17 @@
           "name": "Name",
           "username": "Username (optional)",
           "password": "Password (optional)",
-          "verify_ssl": "Verify SSL certificate"
+          "verify_ssl": "Verify SSL certificate",
+          "bearer_token": "Bearer token (optional)",
+          "org_id": "Tenant / X-Scope-OrgID (optional)"
         },
         "data_description": {
           "prometheus_url": "Base URL of Prometheus or a compatible API (VictoriaMetrics, Thanos, Mimir), e.g. http://192.168.1.100:9090",
           "name": "A friendly name for this server, shown in the card editor",
           "username": "Basic auth username",
-          "password": "Basic auth password"
+          "password": "Basic auth password",
+          "bearer_token": "Sent as `Authorization: Bearer`, e.g. Grafana Cloud or a proxy in front of Thanos. Used instead of the username / password",
+          "org_id": "Tenant header of Mimir / Cortex multi-tenant setups"
         }
       },
       "reconfigure_result": {
@@ -85,7 +93,9 @@
               "notify_severities": "Push for severities",
               "notify_sources": "Alert sources",
               "notify_critical": "Critical severity as critical push",
-              "notify_resolved": "Push when resolved"
+              "notify_resolved": "Push when resolved",
+              "notify_repeat": "Remind every",
+              "notify_repeat_severities": "Reminders for severities"
             },
             "data_description": {
               "notify_persistent": "One notification per alert in the sidebar, updated while series change and removed when resolved",
@@ -93,11 +103,28 @@
               "notify_severities": "\"Other\" = alerts without a severity or with a custom one",
               "notify_sources": "PromQL alerts of Home Assistant and / or alerting rules of the Prometheus server (need the alerts sensor)",
               "notify_critical": "iOS: critical alert that sounds in silent / focus mode (allow critical alerts for the app). Android: high priority through the alarm stream",
-              "notify_resolved": "Replaces the firing notification on the phone"
+              "notify_resolved": "Replaces the firing notification on the phone",
+              "notify_repeat": "Push a still firing alert again after this time. 0 = no reminders",
+              "notify_repeat_severities": "Severities that get reminders (default critical only)"
+            }
+          },
+          "alertmanager": {
+            "name": "Alertmanager",
+            "description": "Silenced alerts are not notified and are marked in the Alerts card. Firing pushes get a \"Silence\" button. The connection credentials are used.",
+            "data": {
+              "alertmanager_url": "Alertmanager URL",
+              "silence_duration": "Silence duration"
+            },
+            "data_description": {
+              "alertmanager_url": "e.g. http://192.168.1.100:9093. Empty = no Alertmanager",
+              "silence_duration": "Silence created with the button of a push notification or in the Alerts card"
             }
           }
         }
       }
+    },
+    "error": {
+      "alertmanager_error": "Alertmanager does not answer: {error_detail}"
     }
   },
   "config_subentries": {
@@ -170,14 +197,16 @@
             "for": "For (firing window)",
             "severity": "Severity",
             "summary": "Summary",
-            "notify": "Notify"
+            "notify": "Notify",
+            "keep_firing_for": "Keep firing for"
           },
           "data_description": {
             "query": "Instant query. Either the query itself selects the problem (e.g. up == 0) with condition \"any series\", or its values are compared with a threshold",
             "condition": "\"Any series\": every series returned by the query is active",
             "for": "How long a series must stay active before the alert fires. Empty = at once",
             "summary": "Templates: {{ $value }}, {{ $labels.instance }}",
-            "notify": "System notification and push (Configure on the integration page)"
+            "notify": "System notification and push (Configure on the integration page)",
+            "keep_firing_for": "A firing series resolves only after the condition stays false this long (no flapping on short dips)"
           }
         },
         "reconfigure": {
@@ -191,10 +220,12 @@
             "for": "For (firing window)",
             "severity": "Severity",
             "summary": "Summary",
-            "notify": "Notify"
+            "notify": "Notify",
+            "keep_firing_for": "Keep firing for"
           },
           "data_description": {
-            "notify": "System notification and push (Configure on the integration page)"
+            "notify": "System notification and push (Configure on the integration page)",
+            "keep_firing_for": "A firing series resolves only after the condition stays false this long (no flapping on short dips)"
           }
         }
       },
@@ -261,12 +292,52 @@
       "alerts": {
         "name": "Firing alerts"
       }
+    },
+    "button": {
+      "test_notification": {
+        "name": "Send test notification"
+      },
+      "test_notification_critical": {
+        "name": "Send critical test notification"
+      }
     }
   },
   "issues": {
     "unreachable": {
       "title": "Prometheus server {name} is unreachable",
       "description": "PromQL sensors and alerts of **{name}** cannot be updated: {error}\n\nCheck that the server is running, or change the connection with **Reconfigure** on the integration page. This message disappears automatically when the server answers again."
+    }
+  },
+  "services": {
+    "query": {
+      "name": "PromQL query",
+      "description": "Runs an instant PromQL query and returns the result (use response_variable).",
+      "fields": {
+        "entry_id": {
+          "name": "Server",
+          "description": "Prometheus server; empty = the first one"
+        },
+        "query": {
+          "name": "Query",
+          "description": "Instant PromQL query"
+        },
+        "time": {
+          "name": "Time",
+          "description": "Evaluation time; empty = now"
+        },
+        "aggregate": {
+          "name": "Combine series",
+          "description": "How `value` is computed from several series"
+        }
+      }
+    }
+  },
+  "exceptions": {
+    "server_not_found": {
+      "message": "Prometheus server {entry_id} is not configured or not loaded"
+    },
+    "query_failed": {
+      "message": "The query failed: {error}"
     }
   }
 }

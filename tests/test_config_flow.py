@@ -116,4 +116,7 @@ async def test_options_flow(hass: HomeAssistant, prometheus, config_entry) -> No
         "notify_sources": ["local", "prometheus"],
         "notify_critical": True,
         "notify_resolved": True,
+        "notify_repeat": 0,
+        "notify_repeat_severities": ["critical"],
+        "silence_duration": 60,
     }

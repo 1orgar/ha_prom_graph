@@ -26,7 +26,11 @@ Backend integration that connects Home Assistant to one or more Prometheus serve
 
 ## ✨ Features
 
-- 🔌 Multiple Prometheus servers, Basic Auth, optional SSL verification
+- 🔌 Multiple Prometheus servers, Basic Auth or **Bearer token**, `X-Scope-OrgID` (Mimir / Cortex), optional SSL verification
+- 🔕 **Alertmanager** — silenced alerts are not notified, **Silence** button in pushes and in the Alerts card
+- ⏱️ Alert state **survives restarts**, `keep_firing_for`, **reminders** for alerts that are still firing
+- 🔎 **`prometheus_dashboard.query` action** — PromQL result in scripts and automations (`response_variable`)
+- 🔁 Transient errors (connection, 502 / 503 / 504) are retried
 - 🧪 **Test connection** button in the setup dialog — shows version, response time and targets up before saving
 - 🔁 Reconfigure an existing server from the UI (also with connection test)
 - 📈 **PromQL sensors** — any instant query becomes a Home Assistant sensor (automations, history, statistics)
@@ -53,7 +57,9 @@ Copy `custom_components/prometheus_dashboard/` to `<config>/custom_components/` 
 ## ⚙️ Setup
 
 1. **Settings → Devices & services → Add integration → Prometheus Dashboard**.
-2. Enter the URL (e.g. `http://192.168.1.100:9090`) and optional credentials.
+2. Enter the URL (e.g. `http://192.168.1.100:9090`) and optional credentials: username / password, or a
+   **bearer token** (Grafana Cloud, a proxy in front of Thanos; used instead of Basic Auth), and a
+   **tenant** sent as `X-Scope-OrgID` for multi-tenant Mimir / Cortex.
 3. Press **Test connection**. On success you'll see the server version, response time and targets up —
    choose **Save** or **Change settings**.
 
@@ -76,6 +82,7 @@ A sensor only shows a value. To get an **alert** press **Add PromQL alert** on t
 |-------|-------------|
 | Query | instant query. Either the query selects the problem itself (`up == 0`, `node_filesystem_avail_bytes / node_filesystem_size_bytes < 0.1`) with condition **any series**, or its values are compared with a threshold (`>`, `≥`, `<`, `≤`, `=`, `≠`) |
 | For (firing window) | how long a series must stay active before the alert fires; empty = at once |
+| Keep firing for | a firing series resolves only after the condition has been false this long (no flapping on short dips) |
 | Severity / Summary | shown in the Alerts card; summary supports `{{ $value }}` and `{{ $labels.instance }}` |
 
 **Every series of the query is an alert instance of its own** (like Prometheus): `inactive → pending → firing`.
@@ -101,7 +108,10 @@ actions:
 
 - The Alerts card (`prometheus_dashboard/alerts`) lists these alerts together with the Prometheus rules
   (`source: home_assistant`, filter *Source* in the card).
-- The state is kept in memory: after a restart of Home Assistant pending windows start again.
+- The state (pending windows, firing series, sent notifications) is saved in `.storage` and **restored after a
+  restart** of Home Assistant or a reload of the integration — no second "firing" push, the `for` window goes on.
+  State older than one hour is discarded.
+- Alerts can also be created from a card: **Create alert** under the query of any card editor (admins only).
 
 ### Alert notifications
 
@@ -117,8 +127,42 @@ Firing alerts are sent **without automations** (**⋮ → Configure → Alert no
 - Filters: severities (critical / warning / info / other) and sources — PromQL alerts of Home Assistant and
   alerting rules of the Prometheus server (these need the alerts sensor). Every PromQL alert also has a **Notify** switch.
 - After a restart of Home Assistant alerts that are already firing are not pushed again.
+- **Reminders**: *Remind every* (minutes, `0` = off) pushes a still firing alert again ("STILL FIRING"),
+  by default only for *critical*.
+- Two buttons on the server device — **Send test notification** and **Send critical test notification** —
+  check the push setup (e.g. that critical alerts are allowed on the phone).
 
 The `prometheus_dashboard_alert` event is still fired for custom automations.
+
+### Alertmanager (silences)
+
+**⋮ → Configure → Alertmanager**: URL (e.g. `http://192.168.1.100:9093`, checked on save) and the silence duration.
+The credentials of the Prometheus connection are used.
+
+- Series matched by an active silence are not notified (system notification removed, no push, no *resolved* push).
+- Firing pushes get a **Silence** action button: it creates a silence in Alertmanager for exactly this series
+  (`alertname`, `severity` and all labels) and fires `prometheus_dashboard_silence`.
+- The Alerts card marks silenced alerts and shows a **Silence** button for admins.
+
+### Action `prometheus_dashboard.query`
+
+Runs an instant query and returns the result:
+
+```yaml
+actions:
+  - action: prometheus_dashboard.query
+    data:
+      query: sum by (instance) (rate(node_cpu_seconds_total{mode!="idle"}[5m]))
+      aggregate: max        # first / sum / avg / min / max / count → `value`
+    response_variable: cpu
+  - action: notify.mobile_app_phone
+    data:
+      message: "Max CPU: {{ cpu.value | round(2) }} ({{ cpu.series | count }} hosts)"
+```
+
+Response: `series` (list of `labels` + `value`), `value`, `result_type`, `server`. `entry_id` (server) and `time` are optional.
+
+Requests to Prometheus that fail with a connection error or 502 / 503 / 504 are retried twice (after 0.5 s and 1.5 s).
 
 ### Options
 
@@ -129,7 +173,8 @@ The `prometheus_dashboard_alert` event is still fired for custom automations.
 | Polling interval | 30 s | update interval of PromQL sensors and the alerts sensor |
 | Query cache TTL | 5 s | identical queries within this time share one request; `0` disables the cache (concurrent requests are still merged) |
 | Alerts sensor | off | `sensor.<server>_firing_alerts` with pending count and alert list in attributes |
-| Alert notifications | system: on, push: none | see [Alert notifications](#alert-notifications) |
+| Alert notifications | system: on, push: none | see [Alert notifications](#alert-notifications); reminders off |
+| Alertmanager | off | URL and silence duration (1 h), see [Alertmanager](#alertmanager-silences) |
 
 ## 🧩 Websocket API
 
@@ -144,7 +189,9 @@ Used by the cards; `entry_id` is optional — the first configured server is use
 | `prometheus_dashboard/label_values` | `label` |
 | `prometheus_dashboard/series` | `match?: string[]` |
 | `prometheus_dashboard/metadata` | `metric?` |
-| `prometheus_dashboard/alerts` | — |
+| `prometheus_dashboard/alerts` | — (alerts get `silenced` / `silenced_until` with Alertmanager) |
+| `prometheus_dashboard/create_alert` | admin: `name`, `query`, `condition?`, `threshold?`, `for?`, `severity?`, `summary?` |
+| `prometheus_dashboard/silence` | admin: `labels`, `minutes?`, `comment?` |
 
 ## 🧪 Development
 

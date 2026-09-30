@@ -23,7 +23,9 @@ from homeassistant.helpers.selector import TextSelector, TextSelectorConfig, Tex
 
 from .api import ConnectionTestResult, PrometheusClient, PrometheusError, normalize_url
 from .const import (
+    CONF_BEARER_TOKEN,
     CONF_NAME,
+    CONF_ORG_ID,
     CONF_PASSWORD,
     CONF_PROMETHEUS_URL,
     CONF_USERNAME,
@@ -61,6 +63,8 @@ DATA_SCHEMA = vol.Schema(
         vol.Optional(CONF_NAME, default=DEFAULT_NAME): str,
         vol.Optional(CONF_USERNAME): str,
         vol.Optional(CONF_PASSWORD): TextSelector(TextSelectorConfig(type=TextSelectorType.PASSWORD)),
+        vol.Optional(CONF_BEARER_TOKEN): TextSelector(TextSelectorConfig(type=TextSelectorType.PASSWORD)),
+        vol.Optional(CONF_ORG_ID): str,
         vol.Optional(CONF_VERIFY_SSL, default=True): bool,
     }
 )

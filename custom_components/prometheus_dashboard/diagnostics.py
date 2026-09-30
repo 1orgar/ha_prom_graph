@@ -8,9 +8,9 @@ from homeassistant.components.diagnostics import async_redact_data
 from homeassistant.core import HomeAssistant
 
 from . import PrometheusConfigEntry
-from .const import CONF_PASSWORD, CONF_USERNAME
+from .const import CONF_ALERTMANAGER_URL, CONF_BEARER_TOKEN, CONF_NOTIFY_SERVICES, CONF_PASSWORD, CONF_USERNAME
 
-TO_REDACT = {CONF_PASSWORD, CONF_USERNAME}
+TO_REDACT = {CONF_PASSWORD, CONF_USERNAME, CONF_BEARER_TOKEN, CONF_NOTIFY_SERVICES, CONF_ALERTMANAGER_URL}
 
 
 async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: PrometheusConfigEntry) -> dict[str, Any]:
@@ -21,7 +21,7 @@ async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: Prometh
         "entry": {
             "title": entry.title,
             "data": async_redact_data(dict(entry.data), TO_REDACT),
-            "options": dict(entry.options),
+            "options": async_redact_data(dict(entry.options), TO_REDACT),
             "subentries": [
                 {"type": sub.subentry_type, "title": sub.title, "data": dict(sub.data)}
                 for sub in entry.subentries.values()
@@ -38,4 +38,12 @@ async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: Prometh
             for sub_id, res in (data.queries.items() if data else [])
         },
         "alerts": None if not data or data.alerts is None else len(data.alerts),
+        "alert_state": {
+            rule_id: [{"state": i["state"], "active_since": i["active_since"]} for i in items]
+            for rule_id, items in coordinator.alert_tracker.as_dict().items()
+        },
+        "alertmanager": {
+            "configured": coordinator.alertmanager is not None,
+            "active_silences": None if coordinator.silences is None else len(coordinator.silences),
+        },
     }

@@ -102,8 +102,11 @@ async def test_notification_filters(hass: HomeAssistant, prometheus, entry_data)
     assert _notifications(hass) == {}
 
 
-async def test_prometheus_rules_and_unload(hass: HomeAssistant, prometheus, entry_data) -> None:
-    """Firing Prometheus alerts (alerts sensor on) are notified too; unloading removes the notifications."""
+async def test_prometheus_rules_reload_and_remove(hass: HomeAssistant, prometheus, entry_data) -> None:
+    """Firing Prometheus alerts (alerts sensor on) are notified too.
+
+    A reload keeps the notifications (the state is restored), removing the server deletes them.
+    """
     entry = MockConfigEntry(domain=DOMAIN, title="Home", data=entry_data, options={"alerts_enabled": True})
     entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(entry.entry_id)
@@ -111,5 +114,10 @@ async def test_prometheus_rules_and_unload(hass: HomeAssistant, prometheus, entr
     titles = [n["title"] for n in _notifications(hass).values()]
     assert titles == ["🔴 HighLoad [WARNING]"]  # the pending DiskFull alert is not notified
 
-    assert await hass.config_entries.async_unload(entry.entry_id)
+    assert await hass.config_entries.async_reload(entry.entry_id)
+    await hass.async_block_till_done()
+    assert [n["title"] for n in _notifications(hass).values()] == titles
+
+    assert await hass.config_entries.async_remove(entry.entry_id)
+    await hass.async_block_till_done()
     assert _notifications(hass) == {}
