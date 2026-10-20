@@ -1,9 +1,9 @@
 {
   "domain": "prometheus_dashboard",
   "name": "Prometheus Dashboard",
+  "after_dependencies": ["frontend", "lovelace"],
   "codeowners": ["@1orgar"],
   "config_flow": true,
-  "after_dependencies": ["frontend", "lovelace"],
   "dependencies": ["http", "websocket_api"],
   "documentation": "https://github.com/1orgar/ha_prom_graph",
   "integration_type": "service",
