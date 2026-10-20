@@ -83,6 +83,12 @@ EVENT_SILENCE = f"{DOMAIN}_silence"
 
 SERVICE_QUERY = "query"
 
+# Dashboard cards bundled in www/ (built from frontend/)
+CARDS_URL_BASE = f"/{DOMAIN}_static"
+CARDS_FILENAME = "prometheus-dashboard-cards.js"
+ISSUE_LEGACY_CARDS = "legacy_cards"
+LEGACY_CARDS_MARKER = "ha_prom_graph_cards"  # resource of the former separate HACS plugin
+
 SEVERITY_OTHER = "other"  # alerts without one of SEVERITIES
 NOTIFY_SEVERITIES = [*SEVERITIES, SEVERITY_OTHER]
 SOURCE_LOCAL = "local"

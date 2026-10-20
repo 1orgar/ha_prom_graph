@@ -1,5 +1,8 @@
 # Dependencies
 node_modules/
+
+# NOTE: custom_components/prometheus_dashboard/www/ (built cards) is committed on purpose -
+# HACS installs the integration folder as is; CI checks that it matches frontend/
 __pycache__/
 *.pyc
 *.pyo

@@ -29,7 +29,7 @@
 
     const lang = new URLSearchParams(location.search).get('lang') || 'en';
     const hass = createHass(lang);
-    await import('../dist/ha_prom_graph_cards.js');
+    await import('../../custom_components/prometheus_dashboard/www/prometheus-dashboard-cards.js');
 
     const h2 = document.createElement('h2');
     h2.textContent = lang === 'ru' ? 'Добавить карточку → Пользовательские' : 'Add card → Custom cards';

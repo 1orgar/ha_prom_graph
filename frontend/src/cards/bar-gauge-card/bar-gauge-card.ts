@@ -1,5 +1,6 @@
 import { html, css, nothing } from 'lit';
-import { customElement, state } from 'lit/decorators.js';
+import { state } from 'lit/decorators.js';
+import { customElement } from '../../shared/define';
 import { BasePrometheusCard } from '../../shared/base-prometheus-card';
 import { cardStyles } from '../../shared/card-styles';
 import { BarGaugeCardConfig } from './bar-gauge-card-config';

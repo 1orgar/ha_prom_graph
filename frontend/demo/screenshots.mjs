@@ -5,7 +5,8 @@ import { readFile, mkdir } from 'node:fs/promises';
 import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const root = fileURLToPath(new URL('..', import.meta.url));
+// repo root: the demo pages load the bundle from custom_components/, screenshots go to images/
+const root = fileURLToPath(new URL('../..', import.meta.url));
 const { chromium } = await import(process.env.PLAYWRIGHT_CORE || 'playwright-core');
 const { DEMO_CARDS } = await import('./cards.js');
 
@@ -33,7 +34,7 @@ page.on('pageerror', (e) => console.error('page error:', e.message));
 await mkdir(join(root, 'images'), { recursive: true });
 
 for (const demo of DEMO_CARDS) {
-  await page.goto(`http://127.0.0.1:${port}/demo/index.html?card=${demo.id}`);
+  await page.goto(`http://127.0.0.1:${port}/frontend/demo/index.html?card=${demo.id}`);
   await page.waitForFunction(() => window.__demoReady === true);
   await page.waitForTimeout(700); // data fetch + chart layout
   const el = await page.$(`#${demo.id}`);
@@ -43,7 +44,7 @@ for (const demo of DEMO_CARDS) {
 
 // Card picker ("Add card" dialog) with stub configs - verifies auto-detected demo mode
 await page.setViewportSize({ width: 1020, height: 900 });
-await page.goto(`http://127.0.0.1:${port}/demo/picker.html`);
+await page.goto(`http://127.0.0.1:${port}/frontend/demo/picker.html`);
 await page.waitForFunction(() => window.__demoReady === true);
 await page.waitForTimeout(900);
 await page.screenshot({ path: join(root, 'images', 'card-picker.png'), fullPage: true });
@@ -52,7 +53,7 @@ console.log('saved images/card-picker.png');
 // Editors (structure check, not committed): EDITORS=1 node demo/screenshots.mjs
 if (process.env.EDITORS) {
   await page.setViewportSize({ width: 1000, height: 900 });
-  await page.goto(`http://127.0.0.1:${port}/demo/editor.html?lang=${process.env.EDITORS_LANG || 'en'}`);
+  await page.goto(`http://127.0.0.1:${port}/frontend/demo/editor.html?lang=${process.env.EDITORS_LANG || 'en'}`);
   await page.waitForFunction(() => window.__demoReady === true);
   await page.screenshot({ path: '/tmp/editors.png', fullPage: true });
   console.log('saved /tmp/editors.png');

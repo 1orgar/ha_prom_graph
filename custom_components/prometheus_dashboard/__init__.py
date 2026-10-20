@@ -1,8 +1,8 @@
-"""Prometheus Dashboard - backend for the Prometheus Graph Cards.
+"""Prometheus Dashboard - Prometheus servers, PromQL sensors / alerts and Grafana-style cards.
 
 The integration stores Prometheus connections and exposes a websocket API
-(`prometheus_dashboard/*`) that proxies PromQL queries. Dashboard cards live in a
-separate repository: https://github.com/1orgar/ha_prom_graph_cards
+(`prometheus_dashboard/*`) that proxies PromQL queries. The dashboard cards are shipped in
+`www/` and registered as a dashboard resource on setup (see cards.py).
 """
 
 from __future__ import annotations
@@ -17,6 +17,7 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.typing import ConfigType
 
 from .api import PrometheusClient
+from .cards import async_register_cards, async_unregister_cards
 from .const import ACTION_SILENCE_PREFIX, CONF_CACHE_TTL, DEFAULT_CACHE_TTL, DOMAIN, EVENT_MOBILE_APP_ACTION
 from .coordinator import PrometheusCoordinator
 from .repairs import async_update_connection_issue
@@ -43,6 +44,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Register the websocket API, the `query` action and the notification action listener once."""
     async_register_websocket_commands(hass)
     async_register_services(hass)
+    await async_register_cards(hass)
 
     async def _on_mobile_action(event: Event) -> None:
         """"Silence" button of a push notification (mobile app)."""
@@ -113,3 +115,5 @@ async def async_remove_entry(hass: HomeAssistant, entry: PrometheusConfigEntry) 
     for nid in (data.get("notifier") or {}).get("persistent") or {}:
         persistent_notification.async_dismiss(hass, nid)
     await store.async_remove()
+    if not [e for e in hass.config_entries.async_entries(DOMAIN) if e.entry_id != entry.entry_id]:
+        await async_unregister_cards(hass)

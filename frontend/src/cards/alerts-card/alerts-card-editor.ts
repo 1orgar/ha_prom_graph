@@ -1,4 +1,4 @@
-import { customElement } from 'lit/decorators.js';
+import { customElement } from '../../shared/define';
 import type { AlertsCardConfig } from './alerts-card';
 import { BasePrometheusEditor, EditorSection } from '../../shared/base-editor';
 import { displaySection, panelSection, querySection } from '../../shared/editor-utils';

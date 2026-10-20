@@ -1,5 +1,6 @@
 import { html, css, nothing, PropertyValues } from 'lit';
-import { customElement, query, state } from 'lit/decorators.js';
+import { query, state } from 'lit/decorators.js';
+import { customElement } from '../../shared/define';
 import { BasePrometheusCard } from '../../shared/base-prometheus-card';
 import { cardStyles } from '../../shared/card-styles';
 import { BaseCardConfig } from '../../types';

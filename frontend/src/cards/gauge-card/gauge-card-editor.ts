@@ -1,4 +1,4 @@
-import { customElement } from 'lit/decorators.js';
+import { customElement } from '../../shared/define';
 import { GaugeCardConfig } from './gauge-card-config';
 import { BasePrometheusEditor, EditorSection } from '../../shared/base-editor';
 import {

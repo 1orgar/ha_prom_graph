@@ -1,5 +1,6 @@
 import { html, css, PropertyValues, unsafeCSS, nothing } from 'lit';
-import { customElement, state, query } from 'lit/decorators.js';
+import { state, query } from 'lit/decorators.js';
+import { customElement } from '../../shared/define';
 import uPlot from 'uplot';
 // @ts-ignore
 import uPlotCSSText from 'uplot/dist/uPlot.min.css';

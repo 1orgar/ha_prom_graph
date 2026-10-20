@@ -19,7 +19,7 @@
     const only = params.get('card');
     const hass = createHass(params.get('lang') || 'en');
 
-    await import('../dist/ha_prom_graph_cards.js');
+    await import('../../custom_components/prometheus_dashboard/www/prometheus-dashboard-cards.js');
 
     for (const demo of DEMO_CARDS) {
       if (only && demo.id !== only) continue;

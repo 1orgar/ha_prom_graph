@@ -14,15 +14,15 @@
 Backend integration that connects Home Assistant to one or more Prometheus servers
 (or compatible APIs — VictoriaMetrics, Thanos, Mimir) and proxies PromQL queries over the HA websocket API.
 
-> 📊 **Dashboard cards** live in a separate repository:
-> **[ha_prom_graph_cards](https://github.com/1orgar/ha_prom_graph_cards)** (HACS → *Dashboard*).
+📊 **Grafana-style dashboard cards are included** — stat, gauge, time series, bar charts, state timeline, pie,
+table, heatmap, alerts and dashboard variables. They are registered automatically: one repository, one download.
 
-![Dashboard built with ha_prom_graph_cards](https://raw.githubusercontent.com/1orgar/ha_prom_graph_cards/main/images/row.png)
+![Dashboard built with the cards](https://raw.githubusercontent.com/1orgar/ha_prom_graph/main/images/row.png)
 
 | | |
 |:---:|:---:|
-| ![Time series](https://raw.githubusercontent.com/1orgar/ha_prom_graph_cards/main/images/timeseries.png) | ![Stat tiles](https://raw.githubusercontent.com/1orgar/ha_prom_graph_cards/main/images/stat-tiles.png) |
-| ![State timeline](https://raw.githubusercontent.com/1orgar/ha_prom_graph_cards/main/images/state-timeline.png) | ![Alerts](https://raw.githubusercontent.com/1orgar/ha_prom_graph_cards/main/images/alerts.png) |
+| ![Time series](https://raw.githubusercontent.com/1orgar/ha_prom_graph/main/images/timeseries.png) | ![Stat tiles](https://raw.githubusercontent.com/1orgar/ha_prom_graph/main/images/stat-tiles.png) |
+| ![State timeline](https://raw.githubusercontent.com/1orgar/ha_prom_graph/main/images/state-timeline.png) | ![Alerts](https://raw.githubusercontent.com/1orgar/ha_prom_graph/main/images/alerts.png) |
 
 ## ✨ Features
 
@@ -39,6 +39,8 @@ Backend integration that connects Home Assistant to one or more Prometheus serve
 - 🚨 **Alerts sensor** — number of firing alerts, alert list in attributes (+ `prometheus_dashboard/alerts` for the Alerts card)
 - ♻️ **Request de-duplication + cache** — identical queries from all cards, tabs and sensors share one request
 - 🩺 Diagnostics (credentials redacted) and a Repairs issue while a server is unreachable
+- 📊 **Dashboard cards included** — 11 Grafana-style cards with a visual editor, PromQL autocomplete, dashboard
+  variables, *Create alert* from a panel; registered as a dashboard resource on setup — see **[CARDS.md](CARDS.md)**
 - 🔒 Browser never talks to Prometheus directly — all queries go through HA
 - 🌍 English / Русский
 
@@ -48,11 +50,23 @@ Backend integration that connects Home Assistant to one or more Prometheus serve
 
 1. HACS → **⋮** → **Custom repositories** → add `https://github.com/1orgar/ha_prom_graph`, type **Integration**.
 2. Find **Prometheus Dashboard**, click **Download**, restart Home Assistant.
-3. Install the cards: add `https://github.com/1orgar/ha_prom_graph_cards` as a **Dashboard** repository and download it.
+3. Add a server (see [Setup](#️-setup)) and reload the browser page — the cards appear in **Add card → Custom cards**.
+
+> **Upgrading from the separate `ha_prom_graph_cards` plugin (≤ v0.8):** the cards are part of this integration now.
+> Remove the plugin in **HACS → Prometheus Graph Cards → ⋮ → Remove** (a repair issue reminds you while it is
+> installed) and reload the page. Dashboards keep working — the card types are the same.
 
 ### Manual
 
 Copy `custom_components/prometheus_dashboard/` to `<config>/custom_components/` and restart Home Assistant.
+The cards are inside (`www/`) and registered automatically.
+
+### Dashboard resource
+
+On setup the integration serves its cards at `/prometheus_dashboard_static/prometheus-dashboard-cards.js` and adds
+them to **Settings → Dashboards → ⋮ → Resources** (the `?v=` version changes with every update, so browsers load
+the new cards). Nothing is copied to `/config/www`. With resources in YAML mode the module is loaded on every
+frontend page instead. Removing the last server removes the resource.
 
 ## ⚙️ Setup
 
@@ -176,6 +190,18 @@ Requests to Prometheus that fail with a connection error or 502 / 503 / 504 are 
 | Alert notifications | system: on, push: none | see [Alert notifications](#alert-notifications); reminders off |
 | Alertmanager | off | URL and silence duration (1 h), see [Alertmanager](#alertmanager-silences) |
 
+## 📊 Dashboard cards
+
+| Card | Type |
+|------|------|
+| Stat · Gauge · Bar Gauge | `custom:prometheus-stat-card` · `custom:prometheus-gauge-card` · `custom:prometheus-bar-gauge-card` |
+| Time Series · Bar Chart · State Timeline | `custom:prometheus-timeseries-card` · `custom:prometheus-bar-card` · `custom:prometheus-state-timeline-card` |
+| Pie · Table · Heatmap | `custom:prometheus-pie-card` · `custom:prometheus-table-card` · `custom:prometheus-heatmap-card` |
+| Alerts · Variables | `custom:prometheus-alerts-card` · `custom:prometheus-variables-card` |
+
+Everything is configured in the visual editor. Options, screenshots, dashboard variables and YAML examples:
+**[CARDS.md](CARDS.md)**.
+
 ## 🧩 Websocket API
 
 Used by the cards; `entry_id` is optional — the first configured server is used when omitted.
@@ -198,11 +224,19 @@ Used by the cards; `entry_id` is optional — the first configured server is use
 ```bash
 pip install -r requirements_test.txt   # Python 3.14
 pytest -q
+
+cd frontend                            # dashboard cards (TypeScript + Lit)
+npm ci
+npm test && npm run build              # -> custom_components/prometheus_dashboard/www/
 ```
 
-**Releases are automatic:** bump `version` in `custom_components/prometheus_dashboard/manifest.json`,
-commit and push to `main`. After hassfest and tests pass, CI creates the tag `vX.Y.Z` and a GitHub release
-(versions like `1.0.0-beta.1` become pre-releases). If the tag already exists nothing happens.
+The built cards are committed (HACS installs the integration folder as is); CI fails when they are out of date.
+See [frontend/README.md](frontend/README.md) for the demo pages and screenshots.
+
+**Releases are automatic:** bump `version` in `custom_components/prometheus_dashboard/manifest.json` (the cards
+use the same version), rebuild the cards, commit and push to `main`. After hassfest, tests and the frontend build
+pass, CI creates the tag `vX.Y.Z` and a GitHub release (versions like `1.0.0-beta.1` become pre-releases).
+If the tag already exists nothing happens.
 
 ## 🖼️ Brand icon
 
@@ -220,7 +254,7 @@ transparent background; HA uses the icon as the logo fallback).
 ## 🏗️ Architecture
 
 ```
-Browser (ha_prom_graph_cards)
+Browser (cards from /prometheus_dashboard_static/)
     ↕ WebSocket (authenticated by HA)
 HA backend (this integration)
     ↕ HTTP

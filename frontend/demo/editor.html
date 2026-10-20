@@ -32,7 +32,7 @@
     }
     const lang = new URLSearchParams(location.search).get('lang') || 'en';
     const hass = createHass(lang);
-    await import('../dist/ha_prom_graph_cards.js');
+    await import('../../custom_components/prometheus_dashboard/www/prometheus-dashboard-cards.js');
     const cards = ['stat', 'gauge', 'timeseries', 'bar', 'state-timeline', 'pie', 'bar-gauge', 'table', 'heatmap', 'alerts', 'variables'];
     for (const t of cards) {
       const cls = customElements.get(`prometheus-${t}-card`);

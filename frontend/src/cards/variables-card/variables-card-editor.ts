@@ -1,5 +1,5 @@
 import { html } from 'lit';
-import { customElement } from 'lit/decorators.js';
+import { customElement } from '../../shared/define';
 import type { VariablesCardConfig } from './variables-card';
 import { BasePrometheusEditor, EditorSection } from '../../shared/base-editor';
 import { ENTRY_SCHEMA, REFRESH_SCHEMA, TITLE_SCHEMA, TRANSPARENT_SCHEMA } from '../../shared/editor-utils';

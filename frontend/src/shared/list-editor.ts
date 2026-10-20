@@ -1,5 +1,6 @@
 import { LitElement, html, css, nothing } from 'lit';
-import { customElement, property } from 'lit/decorators.js';
+import { property } from 'lit/decorators.js';
+import { customElement } from './define';
 import { HaFormSchema, HomeAssistant } from '../types';
 import { localize } from '../localize';
 import { fireEvent } from './editor-utils';

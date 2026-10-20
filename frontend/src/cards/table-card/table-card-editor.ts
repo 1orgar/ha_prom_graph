@@ -1,4 +1,4 @@
-import { customElement } from 'lit/decorators.js';
+import { customElement } from '../../shared/define';
 import type { TableCardConfig } from './table-card';
 import { BasePrometheusEditor, EditorSection } from '../../shared/base-editor';
 import { DECIMALS_SCHEMA, displaySection, panelSection, querySection, UNIT_SCHEMA } from '../../shared/editor-utils';

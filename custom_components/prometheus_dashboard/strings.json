@@ -306,6 +306,10 @@
     "unreachable": {
       "title": "Prometheus server {name} is unreachable",
       "description": "PromQL sensors and alerts of **{name}** cannot be updated: {error}\n\nCheck that the server is running, or change the connection with **Reconfigure** on the integration page. This message disappears automatically when the server answers again."
+    },
+    "legacy_cards": {
+      "title": "Remove the separate Prometheus Graph Cards plugin",
+      "description": "The dashboard cards are now part of the Prometheus Dashboard integration and are loaded automatically. The old plugin is still installed as the dashboard resource `{url}`.\n\nRemove it in **HACS → Prometheus Graph Cards → ⋮ → Remove** (or delete the resource in **Settings → Dashboards → ⋮ → Resources**) and reload the browser page. Your dashboards keep working - the card types are the same."
     }
   },
   "services": {

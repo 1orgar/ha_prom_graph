@@ -1,5 +1,6 @@
 import { LitElement, html, nothing } from 'lit';
-import { customElement, property, query, state } from 'lit/decorators.js';
+import { property, query, state } from 'lit/decorators.js';
+import { customElement } from './define';
 import { HomeAssistant } from '../types';
 import { applySuggestion, CompletionContext, completionContext, Suggestion } from '../utils/promql';
 import { localize } from '../localize';

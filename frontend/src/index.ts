@@ -1,20 +1,13 @@
-// Import all cards (and their editors) to register them as custom elements
-import './cards/stat-card/stat-card';
-import './cards/gauge-card/gauge-card';
-import './cards/timeseries-card/timeseries-card';
-import './cards/bar-chart-card/bar-chart-card';
-import './cards/state-timeline-card/state-timeline-card';
-import './cards/pie-chart-card/pie-chart-card';
-import './cards/bar-gauge-card/bar-gauge-card';
-import './cards/table-card/table-card';
-import './cards/heatmap-card/heatmap-card';
-import './cards/alerts-card/alerts-card';
-import './cards/variables-card/variables-card';
+// Entry of the bundle shipped with the integration (custom_components/prometheus_dashboard/www/).
+// A second copy of the bundle on the page (the former separate HACS plugin "ha_prom_graph_cards",
+// or the resource added twice) is harmless: elements are defined only once (shared/define.ts)
+// and the first copy wins.
 import { localize } from './localize';
+import './cards';
 
 declare const __VERSION__: string;
 
-const REPO_URL = 'https://github.com/1orgar/ha_prom_graph_cards';
+const DOCS_URL = 'https://github.com/1orgar/ha_prom_graph/blob/main/CARDS.md';
 
 // Register cards in the dashboard "Add card" picker (Community / Custom section)
 const CARDS = [
@@ -32,20 +25,32 @@ const CARDS = [
 ];
 
 const w = window as any;
-w.customCards = w.customCards || [];
-for (const card of CARDS) {
-  if (w.customCards.some((c: { type: string }) => c.type === card.type)) continue;
-  w.customCards.push({
-    type: card.type,
-    name: localize(`${card.key}_name`),
-    description: localize(`${card.key}_desc`),
-    preview: true,
-    documentationURL: REPO_URL
-  });
+
+function register(): void {
+  w.customCards = w.customCards || [];
+  for (const card of CARDS) {
+    if (w.customCards.some((c: { type: string }) => c.type === card.type)) continue;
+    w.customCards.push({
+      type: card.type,
+      name: localize(`${card.key}_name`),
+      description: localize(`${card.key}_desc`),
+      preview: true,
+      documentationURL: DOCS_URL
+    });
+  }
+  console.info(
+    `%c PROMETHEUS-CARDS %c v${__VERSION__} `,
+    'color: white; background: #e65100; font-weight: bold;',
+    'color: #e65100; background: white; font-weight: bold;'
+  );
 }
 
-console.info(
-  `%c PROMETHEUS-CARDS %c v${__VERSION__} `,
-  'color: white; background: #e65100; font-weight: bold;',
-  'color: #e65100; background: white; font-weight: bold;'
-);
+if (w.__PROM_CARDS_VERSION__) {
+  console.warn(
+    `Prometheus Dashboard cards v${__VERSION__}: v${w.__PROM_CARDS_VERSION__} is already loaded and is used. ` +
+      'Remove the old "ha_prom_graph_cards" dashboard resource / HACS plugin - the cards ship with the integration now.'
+  );
+} else {
+  w.__PROM_CARDS_VERSION__ = __VERSION__;
+  register();
+}

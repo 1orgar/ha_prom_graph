@@ -6,22 +6,25 @@ import { string } from 'rollup-plugin-string';
 import { readFileSync } from 'node:fs';
 
 const dev = process.env.ROLLUP_WATCH;
-const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'));
+// one version for the integration and the cards: the one in manifest.json
+const manifest = JSON.parse(
+  readFileSync(new URL('../custom_components/prometheus_dashboard/manifest.json', import.meta.url), 'utf8')
+);
 
-// Replaces the __VERSION__ identifier with the package version
+// Replaces the __VERSION__ identifier with the integration version
 const version = () => ({
   name: 'inject-version',
   transform(code, id) {
     if (!id.endsWith('.ts') || !code.includes('__VERSION__')) return null;
-    return { code: code.replace(/__VERSION__/g, JSON.stringify(pkg.version)), map: null };
+    return { code: code.replace(/__VERSION__/g, JSON.stringify(manifest.version)), map: null };
   },
 });
 
 export default {
   input: 'src/index.ts',
   output: {
-    // HACS requires a .js file named after the repository in dist/
-    file: 'dist/ha_prom_graph_cards.js',
+    // shipped with the integration and served from its static path (see cards.py)
+    file: '../custom_components/prometheus_dashboard/www/prometheus-dashboard-cards.js',
     format: 'es',
     inlineDynamicImports: true,
   },

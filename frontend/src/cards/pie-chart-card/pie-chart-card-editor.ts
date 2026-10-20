@@ -1,4 +1,4 @@
-import { customElement } from 'lit/decorators.js';
+import { customElement } from '../../shared/define';
 import { PieChartCardConfig } from './pie-chart-card-config';
 import { BasePrometheusEditor, EditorSection } from '../../shared/base-editor';
 import { DECIMALS_SCHEMA, displaySection, panelSection, paletteSchema, querySection, UNIT_SCHEMA } from '../../shared/editor-utils';
