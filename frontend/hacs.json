@@ -1,0 +1,6 @@
+{
+  "name": "Prometheus Graph Cards",
+  "filename": "ha_prom_graph_cards.js",
+  "render_readme": true,
+  "homeassistant": "2024.8.0"
+}

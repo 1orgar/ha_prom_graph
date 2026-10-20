@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Card picker preview</title>
+  <link rel="stylesheet" href="./theme.css" />
+  <style>
+    body { display: block; }
+    h2 { font-weight: 400; margin: 0 0 16px; font-size: 20px; }
+  </style>
+</head>
+<body>
+  <script type="module">
+    // Imitates the dashboard "Add card" dialog: cards are placed inside <hui-card-picker>'s
+    // shadow DOM. No global demo flag is set - cards must detect the picker themselves.
+    import { installStubs, createHass } from './stubs.js';
+    installStubs();
+
+    const PICKER_CSS = `
+      :host { display: block; }
+      .cards { display: grid; grid-template-columns: repeat(3, 300px); gap: 16px; }
+      .card { border-radius: 12px; border: 1px solid var(--divider-color); background: var(--secondary-background-color); overflow: hidden; }
+      .card-header { padding: 10px 14px; font-size: 15px; color: var(--primary-text-color); border-bottom: 1px solid var(--divider-color); }
+      .preview { padding: 12px; height: 190px; overflow: hidden; pointer-events: none; }
+    `;
+    customElements.define('hui-card-picker', class extends HTMLElement {
+      constructor() { super(); this.attachShadow({ mode: 'open' }).innerHTML = `<style>${PICKER_CSS}</style><div class="cards"></div>`; }
+    });
+
+    const lang = new URLSearchParams(location.search).get('lang') || 'en';
+    const hass = createHass(lang);
+    await import('../dist/ha_prom_graph_cards.js');
+
+    const h2 = document.createElement('h2');
+    h2.textContent = lang === 'ru' ? 'Добавить карточку → Пользовательские' : 'Add card → Custom cards';
+    document.body.appendChild(h2);
+    const picker = document.createElement('hui-card-picker');
+    picker.id = 'picker';
+    document.body.appendChild(picker);
+    const grid = picker.shadowRoot.querySelector('.cards');
+
+    const types = ['stat', 'gauge', 'timeseries', 'bar', 'state-timeline', 'pie', 'bar-gauge', 'table', 'heatmap'];
+    for (const t of types) {
+      const tag = `prometheus-${t}-card`;
+      await customElements.whenDefined(tag);
+      const cls = customElements.get(tag);
+      const entry = window.customCards.find((c) => c.type === tag);
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.innerHTML = `<div class="card-header">${entry.name}</div><div class="preview"></div>`;
+      const el = document.createElement(tag);
+      el.setConfig(cls.getStubConfig());
+      el.hass = hass;
+      card.querySelector('.preview').appendChild(el);
+      grid.appendChild(card);
+    }
+    window.__demoReady = true;
+  </script>
+</body>
+</html>

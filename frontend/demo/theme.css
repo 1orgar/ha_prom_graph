@@ -1,0 +1,31 @@
+/* Home Assistant default dark theme variables (subset used by the cards) */
+:root {
+  --primary-color: #03a9f4;
+  --primary-text-color: #e1e1e1;
+  --secondary-text-color: #9b9b9b;
+  --divider-color: rgba(225, 225, 225, 0.12);
+  --card-background-color: #1c1c1c;
+  --secondary-background-color: #282828;
+  --primary-background-color: #111111;
+  --ha-card-border-radius: 12px;
+  --ha-card-box-shadow: none;
+  --success-color: #43a047;
+  --error-color: #db4437;
+  color-scheme: dark;
+}
+body {
+  margin: 0;
+  padding: 24px;
+  background: var(--primary-background-color);
+  color: var(--primary-text-color);
+  font-family: Roboto, 'Segoe UI', Helvetica, Arial, sans-serif;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  align-items: flex-start;
+}
+.shot {
+  padding: 12px;
+  background: var(--primary-background-color);
+  box-sizing: border-box;
+}

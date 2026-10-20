@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Prometheus Graph Cards demo</title>
+  <link rel="stylesheet" href="./theme.css" />
+</head>
+<body>
+  <script type="module">
+    // Renders every card from demo/cards.js with the built-in demo data (src/demo/demo-data.ts).
+    // Open via a local web server, e.g. `npx serve .` -> /demo/index.html  (?card=<id>&lang=ru)
+    import { DEMO_CARDS } from './cards.js';
+    import { installStubs, createHass } from './stubs.js';
+
+    window.__PROM_CARDS_DEMO__ = true;
+    installStubs();
+
+    const params = new URLSearchParams(location.search);
+    const only = params.get('card');
+    const hass = createHass(params.get('lang') || 'en');
+
+    await import('../dist/ha_prom_graph_cards.js');
+
+    for (const demo of DEMO_CARDS) {
+      if (only && demo.id !== only) continue;
+      const wrap = document.createElement('div');
+      wrap.className = 'shot';
+      wrap.id = demo.id;
+      wrap.style.width = `${demo.width}px`;
+      // `row`: several cards side by side (height alignment demo)
+      const items = demo.row || [{ config: demo.config }];
+      if (demo.row) Object.assign(wrap.style, { display: 'flex', gap: '12px', alignItems: 'flex-start' });
+      for (const item of items) {
+        const tag = item.config.type.replace('custom:', '');
+        await customElements.whenDefined(tag);
+        const el = document.createElement(tag);
+        el.setConfig(item.config);
+        el.hass = hass;
+        if (item.width) el.style.width = `${item.width}px`;
+        wrap.appendChild(el);
+      }
+      document.body.appendChild(wrap);
+    }
+    window.__demoReady = true;
+  </script>
+</body>
+</html>

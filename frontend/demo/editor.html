@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Card editors (structure)</title>
+  <link rel="stylesheet" href="./theme.css" />
+  <style>
+    body { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; }
+    .ed { width: 300px; background: var(--card-background-color); border-radius: 12px; padding: 12px; font-size: 12px; }
+    .ed h3 { margin: 0 0 8px; font-size: 14px; }
+    .form { color: var(--secondary-text-color); padding: 2px 0 2px 8px; }
+  </style>
+</head>
+<body>
+  <script type="module">
+    // Renders every card editor with a stub <ha-form> that lists the field labels.
+    // Checks the block order: Panel / Query / Display / Thresholds.
+    import { installStubs, createHass } from './stubs.js';
+    installStubs();
+    const flat = (schema) => schema.flatMap((s) => (s.schema ? flat(s.schema) : [s]));
+    for (const tag of ['ha-form', 'ha-button', 'ha-svg-icon', 'ha-icon-button', 'ha-selector']) {
+      if (customElements.get(tag)) continue;
+      customElements.define(tag, class extends HTMLElement {
+        set schema(v) { this._s = v; this._r(); }
+        set computeLabel(f) { this._l = f; this._r(); }
+        _r() {
+          if (tag !== 'ha-form' || !this._s || !this._l) return;
+          this.className = 'form';
+          this.textContent = flat(this._s).map((s) => this._l(s)).join(' · ');
+        }
+      });
+    }
+    const lang = new URLSearchParams(location.search).get('lang') || 'en';
+    const hass = createHass(lang);
+    await import('../dist/ha_prom_graph_cards.js');
+    const cards = ['stat', 'gauge', 'timeseries', 'bar', 'state-timeline', 'pie', 'bar-gauge', 'table', 'heatmap', 'alerts', 'variables'];
+    for (const t of cards) {
+      const cls = customElements.get(`prometheus-${t}-card`);
+      const ed = cls.getConfigElement();
+      ed.hass = hass;
+      ed.setConfig(cls.getStubConfig());
+      const box = document.createElement('div');
+      box.className = 'ed';
+      box.innerHTML = `<h3>${t}</h3>`;
+      box.appendChild(ed);
+      document.body.appendChild(box);
+    }
+    await new Promise((r) => setTimeout(r, 300));
+    window.__demoReady = true;
+  </script>
+</body>
+</html>

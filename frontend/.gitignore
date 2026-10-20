@@ -1,0 +1,20 @@
+# Dependencies
+node_modules/
+
+# NOTE: dist/ is committed on purpose - HACS downloads dist/ha_prom_graph_cards.js
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+*.log
