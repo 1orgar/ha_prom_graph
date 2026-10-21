@@ -7,7 +7,7 @@
 <p align="center">
   <a href="https://github.com/1orgar/ha_prom_graph/releases"><img src="https://img.shields.io/github/v/release/1orgar/ha_prom_graph?style=flat-square" alt="Release"></a>
   <a href="https://github.com/1orgar/ha_prom_graph/blob/main/LICENSE"><img src="https://img.shields.io/github/license/1orgar/ha_prom_graph?style=flat-square" alt="License"></a>
-  <a href="https://github.com/hacs/integration"><img src="https://img.shields.io/badge/HACS-Custom-orange.svg?style=flat-square" alt="HACS"></a>
+  <a href="https://github.com/hacs/integration"><img src="https://img.shields.io/badge/HACS-Default-41BDF5.svg?style=flat-square" alt="HACS"></a>
   <img src="https://img.shields.io/badge/HA-%3E%3D%202025.4-blue?style=flat-square" alt="Home Assistant">
 </p>
 
@@ -46,20 +46,18 @@ table, heatmap, alerts and dashboard variables. They are registered automaticall
 
 ## 🚀 Installation
 
-### HACS (recommended)
+[![Open in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=1orgar&repository=ha_prom_graph&category=integration)
 
-1. HACS → **⋮** → **Custom repositories** → add `https://github.com/1orgar/ha_prom_graph`, type **Integration**.
-2. Find **Prometheus Dashboard**, click **Download**, restart Home Assistant.
+1. Open **HACS**, search for **Prometheus Dashboard** and click **Download** (or use the button above).
+2. Restart Home Assistant.
 3. Add a server (see [Setup](#️-setup)) and reload the browser page — the cards appear in **Add card → Custom cards**.
+
+If the search does not find it yet (older HACS data), add it as a custom repository:
+HACS → **⋮** → **Custom repositories** → `https://github.com/1orgar/ha_prom_graph`, type **Integration**.
 
 > **Upgrading from the separate `ha_prom_graph_cards` plugin (≤ v0.8):** the cards are part of this integration now.
 > Remove the plugin in **HACS → Prometheus Graph Cards → ⋮ → Remove** (a repair issue reminds you while it is
 > installed) and reload the page. Dashboards keep working — the card types are the same.
-
-### Manual
-
-Copy `custom_components/prometheus_dashboard/` to `<config>/custom_components/` and restart Home Assistant.
-The cards are inside (`www/`) and registered automatically.
 
 ### Dashboard resource
 
@@ -237,19 +235,6 @@ See [frontend/README.md](frontend/README.md) for the demo pages and screenshots.
 use the same version), rebuild the cards, commit and push to `main`. After hassfest, tests and the frontend build
 pass, CI creates the tag `vX.Y.Z` and a GitHub release (versions like `1.0.0-beta.1` become pre-releases).
 If the tag already exists nothing happens.
-
-## 🖼️ Brand icon
-
-The icon is shipped in `custom_components/prometheus_dashboard/brand/` (`icon.png` 256×256, `icon@2x.png` 512×512,
-transparent background; HA uses the icon as the logo fallback).
-
-- **Settings → Devices & services** (HA ≥ 2026.3): served locally by the built-in `brands` proxy — shown right after
-  installing and restarting HA.
-- **HACS store list**: the current HACS frontend still loads icons directly from
-  `https://brands.home-assistant.io/_/prometheus_dashboard/icon.png`, which returns the *"icon not available"*
-  placeholder until the domain is added to [home-assistant/brands](https://github.com/home-assistant/brands)
-  (`custom_integrations/prometheus_dashboard/icon.png` + `icon@2x.png`). The HACS validation check `brands`
-  already passes thanks to the local `brand/` folder.
 
 ## 🏗️ Architecture
 
